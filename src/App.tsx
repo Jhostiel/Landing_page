@@ -403,14 +403,6 @@ export default function App() {
             
             {/* Left Column: Headline & Value Prop */}
             <div className="lg:col-span-7 space-y-7 text-left">
-              {/* Top pill badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-800 bg-[#0f1420]/80 text-xs font-medium text-slate-300">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="text-emerald-400 font-semibold">Captación Automática</span>
-                <span className="text-slate-500">•</span>
-                <span>Potenciado por IA</span>
-              </div>
-
               {/* Massive Main Heading */}
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.12] font-['Outfit']">
                 {agencyConfig.headline}
@@ -479,12 +471,6 @@ export default function App() {
 
             {/* Right Column: 3D Infinity Emblem */}
             <div className="lg:col-span-5 relative flex items-center justify-center">
-              {/* Floating Badge Top Right */}
-              <div className="absolute top-2 right-4 sm:right-8 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#121824]/90 border border-slate-700/80 shadow-xl backdrop-blur-md text-xs font-medium text-slate-300">
-                <Zap size={13} className="text-amber-400 fill-amber-400" />
-                <span>Captación Automática</span>
-              </div>
-
               {/* Floating Badge Bottom Left */}
               <div className="absolute bottom-6 left-4 sm:left-6 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#121824]/90 border border-slate-700/80 shadow-xl backdrop-blur-md text-xs font-medium text-slate-300">
                 <Bot size={14} className="text-emerald-400" />
