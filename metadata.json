@@ -1,0 +1,6 @@
+{
+  "name": "Infinity Impact Agency",
+  "description": "Agencia de automatización con Inteligencia Artificial, captación de clientes y soluciones digitales para escalar negocios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "lead_1788621592423_iwf5",
+    "name": "jose mendez",
+    "email": "jhostiel@gmail.com",
+    "phone": "3143724565",
+    "businessName": "mis ojitos",
+    "businessCategory": "Salud / Clínica",
+    "serviceInterest": "Consulta General",
+    "notes": "quiero liberar espacio",
+    "date": "2026-09-07",
+    "timeSlot": "10:30",
+    "status": "confirmado",
+    "createdAt": 1788621592423,
+    "sentEmail": true,
+    "adminNotified": true,
+    "confirmedAt": 1788622267268
+  },
+  {
+    "id": "lead_1788618873679_ybl0",
+    "name": "jose luis mendez",
+    "email": "jhostiel@gmail.com",
+    "phone": "3143724565",
+    "businessName": "mis ojitos",
+    "businessCategory": "Otro",
+    "serviceInterest": "Consulta General",
+    "notes": "quiero un agente de ia",
+    "date": "2026-09-07",
+    "timeSlot": "09:45",
+    "status": "agendado",
+    "createdAt": 1788618873679,
+    "sentEmail": true,
+    "adminNotified": true
+  }
+]

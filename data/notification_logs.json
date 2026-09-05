@@ -1,0 +1,82 @@
+[
+  {
+    "id": "log_1788623562145_lm8s",
+    "timestamp": 1788623562145,
+    "type": "admin_alert",
+    "recipient": "infinityimpactagency@gmail.com",
+    "title": "Alerta: Cita agendada por Prueba Eliminar",
+    "message": "Lead Prueba Eliminar enviado a la bandeja de infinityimpactagency@gmail.com.",
+    "status": "enviado",
+    "leadId": "lead_1788623560550_yh2o"
+  },
+  {
+    "id": "log_1788623561288_vhxq",
+    "timestamp": 1788623561288,
+    "type": "client_confirmation",
+    "recipient": "test@example.com",
+    "title": "Confirmación enviada a Prueba Eliminar",
+    "message": "Correo oficial enviado desde infinityimpactagency@gmail.com con botón de confirmación.",
+    "status": "enviado",
+    "leadId": "lead_1788623560550_yh2o"
+  },
+  {
+    "id": "log_1788622267268_wnfh",
+    "timestamp": 1788622267268,
+    "type": "client_confirmation",
+    "recipient": "jhostiel@gmail.com",
+    "title": "✅ Cita Confirmada por el Cliente: jose mendez",
+    "message": "El cliente jose mendez (mis ojitos) confirmó su asistencia desde el correo para el 2026-09-07 a las 10:30 hrs.",
+    "status": "enviado",
+    "leadId": "lead_1788621592423_iwf5"
+  },
+  {
+    "id": "log_1788622267266_hqm3",
+    "timestamp": 1788622267266,
+    "type": "client_confirmation",
+    "recipient": "jhostiel@gmail.com",
+    "title": "✅ Cita Confirmada por el Cliente: jose mendez",
+    "message": "El cliente jose mendez (mis ojitos) confirmó su asistencia desde el correo para el 2026-09-07 a las 10:30 hrs.",
+    "status": "enviado",
+    "leadId": "lead_1788621592423_iwf5"
+  },
+  {
+    "id": "log_1788621593977_4db3",
+    "timestamp": 1788621593977,
+    "type": "admin_alert",
+    "recipient": "infinityimpactagency@gmail.com",
+    "title": "Alerta: Cita agendada por jose mendez",
+    "message": "Lead mis ojitos enviado a la bandeja de infinityimpactagency@gmail.com.",
+    "status": "enviado",
+    "leadId": "lead_1788621592423_iwf5"
+  },
+  {
+    "id": "log_1788621593114_rhz4",
+    "timestamp": 1788621593114,
+    "type": "client_confirmation",
+    "recipient": "jhostiel@gmail.com",
+    "title": "Confirmación enviada a jose mendez",
+    "message": "Correo oficial enviado desde infinityimpactagency@gmail.com con botón de confirmación.",
+    "status": "enviado",
+    "leadId": "lead_1788621592423_iwf5"
+  },
+  {
+    "id": "log_1788618880351_n17g",
+    "timestamp": 1788618880351,
+    "type": "admin_alert",
+    "recipient": "jhostiel@gmail.com",
+    "title": "Alerta: Cita agendada por jose luis mendez",
+    "message": "Lead mis ojitos agendado para 2026-09-07 09:45 hrs. Correo enviado al admin.",
+    "status": "enviado",
+    "leadId": "lead_1788618873679_ybl0"
+  },
+  {
+    "id": "log_1788618877706_933e",
+    "timestamp": 1788618877706,
+    "type": "client_confirmation",
+    "recipient": "jhostiel@gmail.com",
+    "title": "Confirmación enviada a jose luis mendez",
+    "message": "Correo oficial con botón de confirmación enviado para cita 2026-09-07 a las 09:45 hrs.",
+    "status": "enviado",
+    "leadId": "lead_1788618873679_ybl0"
+  }
+]
