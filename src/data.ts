@@ -112,6 +112,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     price: 'US$ 397',
     priceDetail: 'Pago único',
     buttonText: 'Comenzar ahora',
+    cta: 'Comenzar ahora',
     features: [
       'Página web profesional y responsive',
       'Botón directo de WhatsApp',
@@ -128,6 +129,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     price: 'US$ 797',
     priceDetail: 'Pago único',
     buttonText: 'Elegir plan',
+    cta: 'Elegir plan',
     features: [
       'Todo lo de Start incluido',
       'Agente IA para WhatsApp',
@@ -145,6 +147,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     price: 'US$ 1,497',
     priceDetail: 'Pago inicial + US$297 / mes',
     buttonText: 'Elegir plan',
+    cta: 'Elegir plan',
     popular: true,
     features: [
       'Todo lo de Infinity AI',
@@ -163,6 +166,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     price: 'US$ 2,497+',
     priceDetail: 'Pago inicial + US$497 / mes',
     buttonText: 'Elegir plan',
+    cta: 'Elegir plan',
     features: [
       'Todo lo de Growth incluido',
       'SEO Local avanzado y multisede',

@@ -24,7 +24,6 @@ import {
   BookOpen,
   Check,
   Play,
-  Bot,
   Mail,
   ChevronDown,
   ExternalLink,
@@ -44,8 +43,68 @@ import {
   INDUSTRY_CASES
 } from './data';
 import { WorkspaceAuthState, AgencySiteConfig, ServiceItem, PricingPlan } from './types';
-import { WORKSPACE_SCOPES } from './workspace';
+import { WORKSPACE_SCOPES, createCalendarEvent } from './workspace';
 import { loadAgencyConfig } from './adminDefaults';
+
+function getGoogleCalendarUrl(booking: { name: string; date: string; timeSlot: string; businessName?: string; serviceInterest?: string; meetingLink: string }) {
+  try {
+    const startIso = `${booking.date}T${booking.timeSlot}:00`;
+    const startDate = new Date(startIso);
+    const endDate = new Date(startDate.getTime() + 45 * 60000);
+    const formatGDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const dates = `${formatGDate(startDate)}/${formatGDate(endDate)}`;
+    const title = `Llamada Estratégica IA: ${booking.name} & Infinity Impact`;
+    const details = `Sesión de Estrategia de IA y Automatización.\nCliente: ${booking.name}\nEmpresa: ${booking.businessName || 'Empresa'}\nServicio: ${booking.serviceInterest || 'Consultoría IA'}\nSala Google Meet: ${booking.meetingLink}\n\nAgendada con Infinity Impact Agency.`;
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dates}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(booking.meetingLink)}`;
+  } catch {
+    return 'https://calendar.google.com';
+  }
+}
+
+function downloadIcsFile(booking: { name: string; date: string; timeSlot: string; businessName?: string; serviceInterest?: string; meetingLink: string }) {
+  try {
+    const startIso = `${booking.date}T${booking.timeSlot}:00`;
+    const startDate = new Date(startIso);
+    const endDate = new Date(startDate.getTime() + 45 * 60000);
+    const formatIcsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Infinity Impact Agency//Booking//ES',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:infinity_${Date.now()}@infinityimpactagency.com`,
+      `DTSTAMP:${formatIcsDate(new Date())}`,
+      `DTSTART:${formatIcsDate(startDate)}`,
+      `DTEND:${formatIcsDate(endDate)}`,
+      `SUMMARY:Llamada Estratégica IA: ${booking.name} & Infinity Impact`,
+      `DESCRIPTION:Sesión Estratégica de Automatización con IA.\\nSala Meet: ${booking.meetingLink}`,
+      `LOCATION:${booking.meetingLink}`,
+      'STATUS:CONFIRMED',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT15M',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:Recordatorio de Llamada Estratégica',
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Cita-Infinity-Impact-${booking.date}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Error downloading .ics file:', e);
+  }
+}
 
 export default function App() {
   // Navigation / View state
@@ -82,7 +141,18 @@ export default function App() {
   const [pricing, setPricing] = useState<PricingPlan[]>(() => {
     try {
       const saved = localStorage.getItem('infinity_pricing_content');
-      return saved ? JSON.parse(saved) : PRICING_PLANS;
+      if (saved) {
+        const parsed: PricingPlan[] = JSON.parse(saved);
+        return parsed.map((p, idx) => {
+          const fallback = PRICING_PLANS[idx] || PRICING_PLANS[0];
+          return {
+            ...p,
+            buttonText: p.buttonText || p.cta || fallback.buttonText || 'Elegir plan',
+            cta: p.cta || p.buttonText || fallback.buttonText || 'Elegir plan',
+          };
+        });
+      }
+      return PRICING_PLANS;
     } catch {
       return PRICING_PLANS;
     }
@@ -95,7 +165,10 @@ export default function App() {
     date: string;
     timeSlot: string;
     businessName: string;
+    serviceInterest?: string;
     meetingLink: string;
+    calendarScheduled?: boolean;
+    calendarLink?: string | null;
   } | null>(null);
 
   // Detect email confirmation action in URL (?action=confirm_booking&id=...)
@@ -108,13 +181,18 @@ export default function App() {
 
       if ((action === 'confirm_booking' || hash.includes('confirm_booking')) && leadId) {
         try {
-          // 1. Call server confirmation endpoint
+          // 1. Call server confirmation endpoint (auto-schedules to Google Calendar if server has token)
           let confirmedLead: any = null;
+          let calendarScheduled = false;
+          let calendarLink: string | null = null;
+
           try {
             const res = await fetch(`/api/leads/${leadId}/confirm`, { method: 'POST' });
             if (res.ok) {
               const resData = await res.json();
               confirmedLead = resData.lead;
+              calendarScheduled = !!resData.calendarScheduled;
+              calendarLink = resData.calendarLink || null;
             }
           } catch (e) {
             console.warn('Server confirm call fallback to local:', e);
@@ -124,7 +202,7 @@ export default function App() {
           try {
             const currentLeads: any[] = JSON.parse(localStorage.getItem('infinity_leads') || '[]');
             const updated = currentLeads.map((l) =>
-              l.id === leadId ? { ...l, status: 'confirmado', confirmedAt: Date.now() } : l
+              l.id === leadId ? { ...l, status: 'confirmado', confirmedAt: Date.now(), syncedCalendar: calendarScheduled || l.syncedCalendar } : l
             );
             localStorage.setItem('infinity_leads', JSON.stringify(updated));
             if (!confirmedLead) {
@@ -134,21 +212,46 @@ export default function App() {
             console.error(e);
           }
 
-          // 3. Notify open tabs / Admin Dashboard
+          // 3. Fallback: If client browser holds Google Workspace token and server hadn't scheduled yet
+          const localGoogleToken = localStorage.getItem('google_access_token');
+          if (localGoogleToken && !calendarScheduled && confirmedLead) {
+            try {
+              const startDateTime = `${confirmedLead.date}T${confirmedLead.timeSlot}:00`;
+              const startDate = new Date(startDateTime);
+              const durationMin = agencyConfig.hoursConfig.slotDurationMinutes || 45;
+              const endDate = new Date(startDate.getTime() + durationMin * 60000);
+              const calRes = await createCalendarEvent(localGoogleToken, {
+                summary: `Llamada Estratégica IA: ${confirmedLead.name} (${confirmedLead.businessName || 'Empresa'}) - Infinity Impact`,
+                description: `Sesión Estratégica de Crecimiento y Automatización con IA.\n\nCliente: ${confirmedLead.name}\nEmpresa: ${confirmedLead.businessName || ''}\nWhatsApp: ${confirmedLead.phone || ''}\nEmail: ${confirmedLead.email || ''}\nServicio: ${confirmedLead.serviceInterest || 'Consultoría IA'}\nSala Meet: ${agencyConfig.notifications.customMeetingLink}\n\n✅ Confirmada por el cliente desde el correo.`,
+                startDateTime: startDate.toISOString(),
+                endDateTime: endDate.toISOString(),
+                attendeeEmail: confirmedLead.email,
+              });
+              calendarScheduled = true;
+              calendarLink = calRes?.htmlLink || null;
+            } catch (calErr) {
+              console.warn('Local calendar auto-sync warning:', calErr);
+            }
+          }
+
+          // 4. Notify open tabs / Admin Dashboard
           window.dispatchEvent(
             new CustomEvent('infinity_booking_confirmed', {
-              detail: { id: leadId, lead: confirmedLead },
+              detail: { id: leadId, lead: confirmedLead, calendarScheduled },
             })
           );
 
-          // 4. Open celebratory confirmation modal
+          // 5. Open celebratory confirmation modal
           setConfirmedBookingData({
             id: leadId,
             name: confirmedLead?.name || 'Estimado(a) Cliente',
             date: confirmedLead?.date || 'Fecha Agendada',
             timeSlot: confirmedLead?.timeSlot || '11:00',
             businessName: confirmedLead?.businessName || '',
-            meetingLink: agencyConfig.notifications.customMeetingLink || 'https://meet.google.com/infinity-impact-call',
+            serviceInterest: confirmedLead?.serviceInterest || 'Consultoría IA',
+            meetingLink: agencyConfig.notifications.customMeetingLink || 'https://meet.google.com/inf-agen-impact',
+            calendarScheduled: calendarScheduled || !!confirmedLead?.syncedCalendar,
+            calendarLink: calendarLink || confirmedLead?.calendarEventLink || null,
           });
 
           // Clean URL without reloading page
@@ -170,7 +273,19 @@ export default function App() {
         const savedServices = localStorage.getItem('infinity_services_content');
         if (savedServices) setServices(JSON.parse(savedServices));
         const savedPricing = localStorage.getItem('infinity_pricing_content');
-        if (savedPricing) setPricing(JSON.parse(savedPricing));
+        if (savedPricing) {
+          const parsed: PricingPlan[] = JSON.parse(savedPricing);
+          setPricing(
+            parsed.map((p, idx) => {
+              const fallback = PRICING_PLANS[idx] || PRICING_PLANS[0];
+              return {
+                ...p,
+                buttonText: p.buttonText || p.cta || fallback.buttonText || 'Elegir plan',
+                cta: p.cta || p.buttonText || fallback.buttonText || 'Elegir plan',
+              };
+            })
+          );
+        }
       } catch (e) {
         console.error(e);
       }
@@ -471,12 +586,6 @@ export default function App() {
 
             {/* Right Column: 3D Infinity Emblem */}
             <div className="lg:col-span-5 relative flex items-center justify-center">
-              {/* Floating Badge Bottom Left */}
-              <div className="absolute bottom-6 left-4 sm:left-6 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#121824]/90 border border-slate-700/80 shadow-xl backdrop-blur-md text-xs font-medium text-slate-300">
-                <Bot size={14} className="text-emerald-400" />
-                <span>IA Activa 24/7</span>
-              </div>
-
               <InfinityHeroEmblem />
             </div>
 
@@ -674,13 +783,21 @@ export default function App() {
 
                 <button
                   onClick={() => handleOpenBooking(plan.name)}
-                  className={`w-full py-3 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 ${
+                  className={`w-full py-3.5 px-4 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 group flex items-center justify-center gap-2 cursor-pointer ${
                     plan.popular
-                      ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-black hover:from-emerald-400 hover:to-emerald-300 shadow-emerald-500/20'
-                      : 'bg-slate-800 hover:bg-slate-700 text-white'
+                      ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 font-extrabold hover:from-emerald-400 hover:to-emerald-300 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40'
+                      : 'bg-slate-800/90 hover:bg-slate-700 text-white border border-slate-700/80 hover:border-slate-600'
                   }`}
                 >
-                  {plan.cta}
+                  <span className="tracking-wider uppercase text-[11px] font-extrabold">
+                    {plan.buttonText || plan.cta || (plan.id === 'start' ? 'Comenzar ahora' : 'Elegir plan')}
+                  </span>
+                  <ArrowRight
+                    size={14}
+                    className={`transition-transform group-hover:translate-x-1 shrink-0 ${
+                      plan.popular ? 'text-slate-950' : 'text-emerald-400'
+                    }`}
+                  />
                 </button>
               </div>
             ))}
@@ -859,9 +976,66 @@ export default function App() {
                   <span><strong>Empresa:</strong> {confirmedBookingData.businessName}</span>
                 </div>
               )}
+              {confirmedBookingData.serviceInterest && (
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Sparkles size={14} className="text-amber-400 shrink-0" />
+                  <span><strong>Servicio de Interés:</strong> <span className="text-cyan-300 font-semibold">{confirmedBookingData.serviceInterest}</span></span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-slate-300">
                 <Laptop size={14} className="text-purple-400 shrink-0" />
                 <span className="truncate"><strong>Sala Virtual:</strong> {confirmedBookingData.meetingLink}</span>
+              </div>
+            </div>
+
+            {/* Google Calendar Auto-Schedule Status Banner */}
+            <div className="mt-4 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-emerald-300 text-left">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Calendar size={13} />
+                </div>
+                <span>
+                  <strong>Google Calendar de la Agencia:</strong>{' '}
+                  {confirmedBookingData.calendarScheduled
+                    ? 'Agendado y sincronizado automáticamente con éxito.'
+                    : 'Cita registrada y confirmada en la agenda oficial.'}
+                </span>
+              </div>
+              {confirmedBookingData.calendarLink && (
+                <a
+                  href={confirmedBookingData.calendarLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold flex items-center gap-1 shrink-0 text-[11px] transition-colors"
+                >
+                  <span>Ver evento</span>
+                  <ExternalLink size={10} />
+                </a>
+              )}
+            </div>
+
+            {/* Client Add to Calendar Options */}
+            <div className="mt-4 p-3 rounded-2xl bg-slate-900/60 border border-slate-800 text-left">
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                📅 Añadir a tu calendario personal:
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={getGoogleCalendarUrl(confirmedBookingData)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <Calendar size={13} />
+                  <span>Google Calendar</span>
+                  <ExternalLink size={11} />
+                </a>
+                <button
+                  onClick={() => downloadIcsFile(confirmedBookingData)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <span>Apple / Outlook (.ics)</span>
+                </button>
               </div>
             </div>
 

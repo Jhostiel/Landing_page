@@ -20,7 +20,7 @@ export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
     slotDurationMinutes: 45,
     breakBetweenSlotsMinutes: 15,
     minNoticeHours: 2,
-    timezone: 'America/Santiago (GMT-3)',
+    timezone: 'America/Bogota',
     maxDailyBookings: 8,
     blockedDates: [],
   },
@@ -34,6 +34,8 @@ export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
     customMeetingLink: 'https://meet.google.com/inf-agen-impact',
     notifyGoogleChat: true,
     chatSpaceName: 'spaces/sales-leads-infinity',
+    googleCalendarId: 'infinityimpactagency@gmail.com',
+    googleCalendarEmbedUrl: 'https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota',
   },
   stats: {
     activeClients: '45+',

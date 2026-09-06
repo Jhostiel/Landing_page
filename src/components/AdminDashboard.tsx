@@ -51,7 +51,7 @@ import {
   logNotification,
   getNotificationLogs
 } from '../adminDefaults';
-import { sendGmailMessage, sendChatMessage } from '../workspace';
+import { sendGmailMessage, sendChatMessage, createCalendarEvent } from '../workspace';
 import { InfinityLogo } from './InfinityLogo';
 import { SERVICES_LIST, PRICING_PLANS } from '../data';
 
@@ -74,7 +74,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [authError, setAuthError] = useState('');
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'hours' | 'bookings' | 'notifications' | 'content' | 'workspace'>('hours');
+  const [activeTab, setActiveTab] = useState<'hours' | 'bookings' | 'calendar' | 'notifications' | 'content' | 'workspace'>('hours');
+  const [calendarViewMode, setCalendarViewMode] = useState<'WEEK' | 'MONTH' | 'AGENDA'>('WEEK');
 
   // Configuration State
   const [config, setConfig] = useState<AgencySiteConfig>(() => loadAgencyConfig());
@@ -116,7 +117,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [pricing, setPricing] = useState<PricingPlan[]>(() => {
     try {
       const saved = localStorage.getItem('infinity_pricing_content');
-      return saved ? JSON.parse(saved) : PRICING_PLANS;
+      if (saved) {
+        const parsed: PricingPlan[] = JSON.parse(saved);
+        return parsed.map((p, idx) => {
+          const fallback = PRICING_PLANS[idx] || PRICING_PLANS[0];
+          return {
+            ...p,
+            buttonText: p.buttonText || p.cta || fallback.buttonText || 'Elegir plan',
+            cta: p.cta || p.buttonText || fallback.buttonText || 'Elegir plan',
+          };
+        });
+      }
+      return PRICING_PLANS;
     } catch {
       return PRICING_PLANS;
     }
@@ -393,11 +405,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleSimulateClientConfirmation = async (lead: LeadData) => {
     try {
       // 1. Call server confirmation endpoint
-      await fetch(`/api/leads/${lead.id}/confirm`, { method: 'POST' });
+      const res = await fetch(`/api/leads/${lead.id}/confirm`, { method: 'POST' });
+      let calScheduled = false;
+      let calLink: string | null = null;
+      if (res.ok) {
+        const data = await res.json();
+        calScheduled = !!data.calendarScheduled;
+        calLink = data.calendarLink || null;
+      }
+
+      // If workspaceAuth has accessToken and not yet scheduled by server, schedule client-side
+      if (workspaceAuth.accessToken && !calScheduled) {
+        try {
+          const startDateTime = `${lead.date}T${lead.timeSlot}:00`;
+          const startDate = new Date(startDateTime);
+          const durationMin = config.hoursConfig.slotDurationMinutes || 45;
+          const endDate = new Date(startDate.getTime() + durationMin * 60000);
+          const calRes = await createCalendarEvent(workspaceAuth.accessToken, {
+            summary: `Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`,
+            description: `Sesión Estratégica de Crecimiento con IA.\n\nCliente: ${lead.name}\nEmpresa: ${lead.businessName || ''}\nWhatsApp: ${lead.phone || ''}\nEmail: ${lead.email || ''}\nServicio: ${lead.serviceInterest || 'Consultoría IA'}\nSala Meet: ${config.notifications.customMeetingLink}\n\n✅ Confirmada por el cliente.`,
+            startDateTime: startDate.toISOString(),
+            endDateTime: endDate.toISOString(),
+            attendeeEmail: lead.email,
+          });
+          calScheduled = true;
+          calLink = calRes?.htmlLink || null;
+        } catch (calErr: any) {
+          console.warn('Calendar sync error:', calErr.message);
+        }
+      }
 
       // 2. Update local state
       const updated = leads.map((l) =>
-        l.id === lead.id ? { ...l, status: 'confirmado' as const, confirmedAt: Date.now() } : l
+        l.id === lead.id
+          ? {
+              ...l,
+              status: 'confirmado' as const,
+              confirmedAt: Date.now(),
+              syncedCalendar: calScheduled || l.syncedCalendar,
+              calendarEventLink: calLink || l.calendarEventLink,
+            }
+          : l
       );
       setLeads(updated);
       localStorage.setItem('infinity_leads', JSON.stringify(updated));
@@ -407,16 +455,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         type: 'client_confirmation',
         recipient: lead.email || config.notifications.adminEmail,
         title: `🟢 Cita Confirmada por Cliente: ${lead.name}`,
-        message: `El cliente pulsó el botón de confirmación desde su correo. Cita asegurada para el ${lead.date} a las ${lead.timeSlot} hrs.`,
+        message: `El cliente confirmó su asistencia. Cita asegurada para el ${lead.date} a las ${lead.timeSlot} hrs.${calScheduled ? ' Agendada automáticamente en Google Calendar.' : ''}`,
         status: 'enviado',
         leadId: lead.id,
       });
       setLogs(getNotificationLogs());
 
-      alert(`🟢 ¡Excelente! La cita de ${lead.name} ahora aparece como "CITA CONFIRMADA" en este panel.`);
+      alert(`🟢 ¡Excelente! La cita de ${lead.name} ahora aparece como "CITA CONFIRMADA"${calScheduled ? ' y ha sido agendada en Google Calendar oficial de la agencia.' : '.'}`);
     } catch (e: any) {
       console.error(e);
       handleUpdateLeadStatus(lead.id, 'confirmado');
+    }
+  };
+
+  const handleSyncLeadToCalendar = async (lead: LeadData) => {
+    try {
+      // Try server first
+      let calLink: string | null = null;
+      try {
+        const res = await fetch(`/api/leads/${lead.id}/schedule-calendar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: workspaceAuth.accessToken }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          calLink = data.calendarLink;
+        }
+      } catch (err) {
+        console.warn('Server calendar sync fallback:', err);
+      }
+
+      // Fallback to client OAuth token if available
+      if (!calLink && workspaceAuth.accessToken) {
+        const startDateTime = `${lead.date}T${lead.timeSlot}:00`;
+        const startDate = new Date(startDateTime);
+        const durationMin = config.hoursConfig.slotDurationMinutes || 45;
+        const endDate = new Date(startDate.getTime() + durationMin * 60000);
+        const calRes = await createCalendarEvent(workspaceAuth.accessToken, {
+          summary: `Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`,
+          description: `Sesión Estratégica de Crecimiento con IA.\n\nCliente: ${lead.name}\nEmpresa: ${lead.businessName || ''}\nWhatsApp: ${lead.phone || ''}\nEmail: ${lead.email || ''}\nServicio: ${lead.serviceInterest || 'Consultoría IA'}\nSala Meet: ${config.notifications.customMeetingLink}`,
+          startDateTime: startDate.toISOString(),
+          endDateTime: endDate.toISOString(),
+          attendeeEmail: lead.email,
+        });
+        calLink = calRes?.htmlLink || null;
+      }
+
+      // Fallback: Generate direct 1-click Google Calendar URL targeting infinityimpactagency@gmail.com
+      if (!calLink) {
+        const formatGDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const startDateTime = `${lead.date}T${lead.timeSlot}:00`;
+        const startDate = new Date(startDateTime);
+        const durationMin = config.hoursConfig.slotDurationMinutes || 45;
+        const endDate = new Date(startDate.getTime() + durationMin * 60000);
+        const dates = `${formatGDate(startDate)}/${formatGDate(endDate)}`;
+        const meetingLink = config.notifications.customMeetingLink || 'https://meet.google.com/inf-agen-impact';
+        const title = `Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`;
+        const details = `Sesión Estratégica de Crecimiento con IA.\n\n👤 Cliente: ${lead.name}\n🏢 Empresa: ${lead.businessName || 'No indicada'}\n📱 WhatsApp: ${lead.phone || ''}\n✉️ Email: ${lead.email || ''}\n🎯 Servicio: ${lead.serviceInterest || 'Consultoría IA'}\n📹 Sala Google Meet: ${meetingLink}\n\nAgendada en Infinity Impact Agency (Zona Horaria: Bogotá GMT-5).`;
+        const gCalAgencyUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dates}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(meetingLink)}&add=${encodeURIComponent('infinityimpactagency@gmail.com')}&src=${encodeURIComponent('infinityimpactagency@gmail.com')}&ctz=America/Bogota`;
+        calLink = gCalAgencyUrl;
+        window.open(gCalAgencyUrl, '_blank');
+      }
+
+      if (calLink) {
+        const updated = leads.map((l) =>
+          l.id === lead.id ? { ...l, syncedCalendar: true, calendarEventLink: calLink } : l
+        );
+        setLeads(updated);
+        localStorage.setItem('infinity_leads', JSON.stringify(updated));
+        alert(`📅 ¡Cita de ${lead.name} lista y sincronizada con Google Calendar de Infinity Impact Agency!`);
+      }
+    } catch (e: any) {
+      alert(`Error al agendar en Google Calendar: ${e.message}`);
     }
   };
 
@@ -725,6 +836,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {leads.length}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('calendar')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap relative ${
+              activeTab === 'calendar'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            <Calendar size={16} className={activeTab === 'calendar' ? 'text-white' : 'text-cyan-400'} />
+            Google Calendar Agencia
+            <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-cyan-400/20 text-cyan-300 border border-cyan-500/30">
+              Bogotá
+            </span>
           </button>
 
           <button
@@ -1286,6 +1412,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   </span>
                                 )}
 
+                                {/* Google Calendar status / sync */}
+                                {lead.syncedCalendar ? (
+                                  <a
+                                    href={lead.calendarEventLink || '#'}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title="Agendado en Google Calendar de la agencia (clic para abrir evento)"
+                                    className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-1 text-[11px]"
+                                  >
+                                    <Calendar size={13} />
+                                    <span className="hidden xl:inline text-[10px] font-semibold">Calendar</span>
+                                  </a>
+                                ) : (
+                                  <button
+                                    onClick={() => handleSyncLeadToCalendar(lead)}
+                                    title="Agendar esta cita en Google Calendar ahora"
+                                    className="p-1.5 text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg transition-colors border border-slate-700 hover:border-cyan-500/30 flex items-center gap-1 text-[11px]"
+                                  >
+                                    <Calendar size={13} />
+                                    <span className="hidden xl:inline text-[10px]">+ Calendar</span>
+                                  </button>
+                                )}
+
                                 {/* Resend email */}
                                 <button
                                   onClick={() => handleResendClientConfirmation(lead)}
@@ -1312,6 +1461,302 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </table>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: GOOGLE CALENDAR OFICIAL DE LA AGENCIA */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header & Controls */}
+            <div className="bg-[#0e131f] border border-slate-800 rounded-2xl p-6 sm:p-8">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      CALENDARIO OFICIAL VINCULADO
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                      AMERICA/BOGOTA (GMT-5)
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2 font-['Outfit']">
+                    <Calendar className="text-cyan-400" />
+                    Google Calendar de Infinity Impact Agency
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                    Aquí se reflejan todas las llamadas y sesiones estratégicas de clientes. La cuenta vinculada es{' '}
+                    <strong className="text-cyan-300">infinityimpactagency@gmail.com</strong> sincronizada con la hora de Bogotá.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <a
+                    href="https://calendar.google.com/calendar/u/0/r"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3.5 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <ExternalLink size={14} />
+                    <span>Abrir Google Calendar</span>
+                  </a>
+
+                  <a
+                    href={config.notifications.customMeetingLink || 'https://meet.google.com/inf-agen-impact'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-2"
+                  >
+                    <Zap size={14} className="text-amber-400" />
+                    <span>Sala Google Meet</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Quick Info Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
+                <div className="p-4 rounded-xl bg-[#131926] border border-slate-800/80">
+                  <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>Cuenta de la Agencia</span>
+                    <Mail size={14} className="text-cyan-400" />
+                  </div>
+                  <div className="text-xs font-bold text-white truncate" title="infinityimpactagency@gmail.com">
+                    infinityimpactagency@gmail.com
+                  </div>
+                  <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                    <CheckCircle2 size={11} /> Receptora oficial de citas
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#131926] border border-slate-800/80">
+                  <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>Zona Horaria Principal</span>
+                    <Clock size={14} className="text-cyan-400" />
+                  </div>
+                  <div className="text-sm font-bold text-white">
+                    America/Bogota (GMT-5)
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1">
+                    Horas exactas para Colombia / Latam
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#131926] border border-slate-800/80">
+                  <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>Citas en Sistema</span>
+                    <Calendar size={14} className="text-blue-400" />
+                  </div>
+                  <div className="text-xl font-bold text-white">
+                    {leads.length}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1">
+                    {leads.filter((l) => l.status === 'confirmado').length} confirmadas por clientes
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#131926] border border-slate-800/80">
+                  <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>Enlace Directo</span>
+                    <Globe size={14} className="text-purple-400" />
+                  </div>
+                  <a
+                    href="https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 underline flex items-center gap-1 mt-1"
+                  >
+                    Ver calendario público
+                    <ExternalLink size={11} />
+                  </a>
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    Vista embebida de Google
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Embedded Live Google Calendar */}
+            <div className="bg-[#0e131f] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              <div className="px-6 py-4 bg-[#111726] border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-sm font-semibold text-white">
+                    Vista en Vivo: Google Calendar Embed
+                  </span>
+                  <span className="text-xs text-slate-400 hidden md:inline">
+                    (infinityimpactagency@gmail.com)
+                  </span>
+                </div>
+
+                {/* Mode switcher (Semana, Mes, Agenda) */}
+                <div className="flex items-center gap-1.5 bg-[#0a0e17] p-1 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => setCalendarViewMode('WEEK')}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
+                      calendarViewMode === 'WEEK'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Semana
+                  </button>
+                  <button
+                    onClick={() => setCalendarViewMode('MONTH')}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
+                      calendarViewMode === 'MONTH'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Mes
+                  </button>
+                  <button
+                    onClick={() => setCalendarViewMode('AGENDA')}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
+                      calendarViewMode === 'AGENDA'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Agenda
+                  </button>
+                </div>
+              </div>
+
+              {/* IFrame */}
+              <div className="w-full bg-[#0a0e17] p-3 sm:p-4">
+                <div className="w-full h-[640px] rounded-xl overflow-hidden border border-slate-800/80 bg-white">
+                  <iframe
+                    key={calendarViewMode}
+                    src={`https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota&mode=${calendarViewMode}&showPrint=0&showTabs=1&showCalendars=0&showTz=1`}
+                    style={{ border: 0, width: '100%', height: '100%' }}
+                    frameBorder="0"
+                    scrolling="no"
+                    title="Google Calendar Infinity Impact Agency"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* List of Booked Calls with 1-Click Calendar Sync */}
+            <div className="bg-[#0e131f] border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <CheckCircle2 className="text-emerald-400" size={20} />
+                    Citas Agendadas y Enlaces Directos al Calendario
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Puedes abrir o guardar directamente cada cita en el calendario oficial de la agencia con 1 solo clic.
+                  </p>
+                </div>
+                <span className="text-xs font-semibold px-3 py-1 bg-slate-800 text-slate-300 rounded-lg border border-slate-700">
+                  {leads.length} Cita{leads.length === 1 ? '' : 's'} en total
+                </span>
+              </div>
+
+              {leads.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-sm">
+                  No hay citas registradas aún. Cuando un cliente agende en la web, aparecerá aquí automáticamente.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {leads.map((lead) => {
+                    const formatGDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                    const startDateTime = `${lead.date}T${lead.timeSlot}:00`;
+                    const startDate = new Date(startDateTime);
+                    const durationMin = config.hoursConfig.slotDurationMinutes || 45;
+                    const endDate = new Date(startDate.getTime() + durationMin * 60000);
+                    const dates = `${formatGDate(startDate)}/${formatGDate(endDate)}`;
+                    const meetingLink = config.notifications.customMeetingLink || 'https://meet.google.com/inf-agen-impact';
+                    const title = `Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`;
+                    const details = `Sesión Estratégica de Crecimiento con IA.\n\n👤 Cliente: ${lead.name}\n🏢 Empresa: ${lead.businessName || 'No indicada'}\n📱 WhatsApp: ${lead.phone || ''}\n✉️ Email: ${lead.email || ''}\n🎯 Servicio: ${lead.serviceInterest || 'Consultoría IA'}\n📹 Sala Google Meet: ${meetingLink}\n\nAgendada en Infinity Impact Agency (Bogotá GMT-5).`;
+                    const gCalAgencyUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dates}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(meetingLink)}&add=${encodeURIComponent('infinityimpactagency@gmail.com')}&src=${encodeURIComponent('infinityimpactagency@gmail.com')}&ctz=America/Bogota`;
+
+                    return (
+                      <div
+                        key={lead.id}
+                        className="p-5 rounded-xl bg-[#131926] border border-slate-800/80 hover:border-slate-700 transition-all flex flex-col justify-between gap-4"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h4 className="font-bold text-white text-sm">{lead.name}</h4>
+                              <p className="text-xs text-cyan-400 font-medium">{lead.businessName || 'Empresa no indicada'}</p>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                                lead.status === 'confirmado'
+                                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                              }`}
+                            >
+                              {lead.status === 'confirmado' ? 'CONFIRMADA' : 'AGENDADA'}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-300 space-y-1 pt-1 border-t border-slate-800/60">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar size={13} className="text-cyan-400 shrink-0" />
+                              <span>
+                                <strong>{lead.date}</strong> a las <strong>{lead.timeSlot} hrs</strong> (Bogotá GMT-5)
+                              </span>
+                            </div>
+                            {lead.email && (
+                              <div className="flex items-center gap-1.5 text-slate-400">
+                                <Mail size={13} className="shrink-0" />
+                                <span className="truncate">{lead.email}</span>
+                              </div>
+                            )}
+                            {lead.phone && (
+                              <div className="flex items-center gap-1.5 text-slate-400">
+                                <Phone size={13} className="shrink-0" />
+                                <span>{lead.phone}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/60">
+                          <a
+                            href={lead.calendarEventLink || gCalAgencyUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 px-3 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <Calendar size={13} />
+                            <span>Añadir / Abrir en Calendar</span>
+                          </a>
+
+                          <a
+                            href={meetingLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5"
+                          >
+                            <Zap size={13} className="text-amber-400" />
+                            <span>Meet</span>
+                          </a>
+
+                          {lead.phone && (
+                            <a
+                              href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5"
+                            >
+                              <MessageSquare size={13} />
+                              <span>WhatsApp</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1905,6 +2350,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           className="w-full bg-[#1a2233] border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-300"
                         />
                       </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Texto del Botón (CTA)</label>
+                        <input
+                          type="text"
+                          value={plan.buttonText || plan.cta || 'Elegir plan'}
+                          onChange={(e) => {
+                            const copy = [...pricing];
+                            copy[pIdx].buttonText = e.target.value;
+                            copy[pIdx].cta = e.target.value;
+                            setPricing(copy);
+                          }}
+                          className="w-full bg-[#1a2233] border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 font-semibold"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2131,6 +2590,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="flex justify-between">
                   <span className="text-slate-400">Correo:</span>
                   <span className="text-slate-300 truncate max-w-[200px]">{leadToDelete.email}</span>
+                </div>
+              )}
+              {leadToDelete.serviceInterest && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Servicio de Interés:</span>
+                  <span className="text-purple-300 font-medium">{leadToDelete.serviceInterest}</span>
                 </div>
               )}
             </div>

@@ -16,10 +16,38 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const LEADS_FILE = path.join(DATA_DIR, 'leads.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'agency_config.json');
 const LOGS_FILE = path.join(DATA_DIR, 'notification_logs.json');
+const WORKSPACE_TOKEN_FILE = path.join(DATA_DIR, 'workspace_token.json');
 
 // Ensure data folder exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function getStoredWorkspaceAuth(): { token: string | null; email: string | null } {
+  try {
+    if (fs.existsSync(WORKSPACE_TOKEN_FILE)) {
+      const data = JSON.parse(fs.readFileSync(WORKSPACE_TOKEN_FILE, 'utf-8'));
+      return {
+        token: data.token || null,
+        email: data.email || 'infinityimpactagency@gmail.com',
+      };
+    }
+  } catch (e) {
+    console.error('Error reading workspace token file:', e);
+  }
+  return { token: null, email: 'infinityimpactagency@gmail.com' };
+}
+
+function saveStoredWorkspaceAuth(token: string, email: string) {
+  try {
+    fs.writeFileSync(
+      WORKSPACE_TOKEN_FILE,
+      JSON.stringify({ token, email, updatedAt: Date.now() }, null, 2),
+      'utf-8'
+    );
+  } catch (e) {
+    console.error('Error saving workspace auth file:', e);
+  }
 }
 
 // Helpers to read/write persistent files
@@ -80,9 +108,80 @@ function logNotificationServer(item: any) {
   }
 }
 
-// Google Workspace Token & Gmail API dispatch
-let serverWorkspaceToken: string | null = null;
-let serverWorkspaceEmail: string | null = 'infinityimpactagency@gmail.com';
+// Google Workspace Token & Gmail/Calendar API dispatch
+const initialAuth = getStoredWorkspaceAuth();
+let serverWorkspaceToken: string | null = initialAuth.token;
+let serverWorkspaceEmail: string | null = initialAuth.email || 'infinityimpactagency@gmail.com';
+
+/**
+ * Automatically schedules the confirmed strategy call in the Agency's Google Calendar.
+ * Adds Google Meet conference details, reminders, and invites both client and agency.
+ */
+async function scheduleCallInGoogleCalendar(token: string, lead: LeadData, config: AgencySiteConfig) {
+  const meetingLink = config?.notifications?.customMeetingLink || 'https://meet.google.com/inf-agen-impact';
+  const durationMin = config?.hoursConfig?.slotDurationMinutes || 45;
+
+  const startDateTime = `${lead.date}T${lead.timeSlot}:00`;
+  const startDate = new Date(startDateTime);
+  const endDate = new Date(startDate.getTime() + durationMin * 60000);
+  const timeZone = 'America/Bogota';
+  const agencyCalendarId = 'infinityimpactagency@gmail.com';
+
+  const eventPayload = {
+    summary: `Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`,
+    description: `Sesión Estratégica de Crecimiento y Automatización de Procesos con IA.\n\n👤 Cliente: ${lead.name}\n🏢 Empresa: ${lead.businessName || 'No indicada'}\n💼 Rubro: ${lead.businessCategory || 'General'}\n📱 WhatsApp: ${lead.phone}\n✉️ Email: ${lead.email}\n🎯 Servicio de Interés: ${lead.serviceInterest || 'Agentes de IA'}\n📹 Sala Google Meet: ${meetingLink}\n📝 Notas: ${lead.notes || 'Ninguna'}\n\n✅ Cita confirmada y sincronizada en Infinity Impact Agency.`,
+    start: {
+      dateTime: startDate.toISOString(),
+      timeZone,
+    },
+    end: {
+      dateTime: endDate.toISOString(),
+      timeZone,
+    },
+    location: meetingLink,
+    attendees: [
+      { email: 'infinityimpactagency@gmail.com', displayName: 'Infinity Impact Agency', responseStatus: 'accepted' },
+      { email: lead.email, displayName: lead.name },
+    ],
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'email', minutes: 24 * 60 }, // 1 día antes
+        { method: 'popup', minutes: 15 },      // 15 minutos antes
+      ],
+    },
+  };
+
+  // 1. Try targeting infinityimpactagency@gmail.com directly
+  let res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(agencyCalendarId)}/events?sendUpdates=all`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(eventPayload),
+  });
+
+  // 2. If access to infinityimpactagency@gmail.com fails (404/403), fallback to primary calendar with agency as invitee
+  if (!res.ok && (res.status === 404 || res.status === 403)) {
+    console.log(`[Google Calendar] Notice: Direct insert to ${agencyCalendarId} returned ${res.status}. Falling back to primary calendar.`);
+    res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventPayload),
+    });
+  }
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Google Calendar API error ${res.status}: ${errText}`);
+  }
+
+  return await res.json();
+}
 
 async function sendViaGmailApi(token: string, to: string, subject: string, html: string) {
   const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
@@ -272,13 +371,51 @@ async function dispatchBookingEmails(lead: LeadData, agencyConfig: AgencySiteCon
       });
     }
 
-    // 2. Send to Admin
+    // 2. Send to Admin with official iCalendar (.ics) invite attachment
     if (adminEmail) {
+      const formatIcsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const startIso = `${lead.date}T${lead.timeSlot}:00`;
+      const startDate = new Date(startIso);
+      const durationMin = agencyConfig.hoursConfig.slotDurationMinutes || 45;
+      const endDate = new Date(startDate.getTime() + durationMin * 60000);
+
+      const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Infinity Impact Agency//Booking System//ES',
+        'CALSCALE:GREGORIAN',
+        'METHOD:REQUEST',
+        'BEGIN:VEVENT',
+        `UID:infinity_${lead.id}@infinityimpactagency.com`,
+        `DTSTAMP:${formatIcsDate(new Date())}`,
+        `DTSTART:${formatIcsDate(startDate)}`,
+        `DTEND:${formatIcsDate(endDate)}`,
+        `SUMMARY:Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`,
+        `DESCRIPTION:Sesión Estratégica de Crecimiento con IA.\\nCliente: ${lead.name}\\nEmpresa: ${lead.businessName || 'No indicada'}\\nWhatsApp: ${lead.phone}\\nEmail: ${lead.email}\\nServicio: ${lead.serviceInterest || 'Consultoría IA'}\\nSala Meet: ${meetingLink}`,
+        `LOCATION:${meetingLink}`,
+        'ORGANIZER;CN=Infinity Impact Agency:mailto:infinityimpactagency@gmail.com',
+        'ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Infinity Impact:mailto:infinityimpactagency@gmail.com',
+        `ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=${lead.name}:mailto:${lead.email}`,
+        'STATUS:CONFIRMED',
+        'BEGIN:VALARM',
+        'TRIGGER:-PT15M',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:Recordatorio de Llamada Estratégica IA',
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR',
+      ].join('\r\n');
+
       await transporter.sendMail({
         from: fromAddress,
         to: adminEmail,
         subject: `🔔 [NUEVA CITA AGENDADA] ${lead.name} - ${lead.businessName || 'Nuevo Cliente'} (${lead.date} ${lead.timeSlot} hrs)`,
         html: adminHtml,
+        icalEvent: {
+          filename: `cita-${lead.id}.ics`,
+          method: 'REQUEST',
+          content: icsContent,
+        },
       });
 
       adminEmailSent = true;
@@ -390,7 +527,7 @@ async function startServer() {
   });
 
   // Confirm booking (triggered when client clicks "CONFIRMAR MI CITA" in email)
-  app.post('/api/leads/:id/confirm', (req: Request, res: Response) => {
+  app.post('/api/leads/:id/confirm', async (req: Request, res: Response) => {
     const { id } = req.params;
     const leads = getStoredLeads();
     const leadIndex = leads.findIndex((l) => l.id === id);
@@ -401,15 +538,44 @@ async function startServer() {
 
     // Update status to 'confirmado'
     leads[leadIndex].status = 'confirmado' as any;
-    (leads[leadIndex] as any).confirmedAt = Date.now();
-    saveStoredLeads(leads);
+    leads[leadIndex].confirmedAt = Date.now();
 
     const lead = leads[leadIndex];
+    const config = getStoredConfig();
+    let calendarScheduled = false;
+    let calendarEventResult: any = null;
+
+    // Automatically schedule in Google Calendar if Google Workspace is connected
+    const activeToken = serverWorkspaceToken || getStoredWorkspaceAuth().token;
+    if (activeToken) {
+      try {
+        calendarEventResult = await scheduleCallInGoogleCalendar(activeToken, lead, config);
+        leads[leadIndex].syncedCalendar = true;
+        leads[leadIndex].calendarEventId = calendarEventResult.id;
+        leads[leadIndex].calendarEventLink = calendarEventResult.htmlLink;
+        calendarScheduled = true;
+        console.log(`[Google Calendar] Call scheduled automatically for ${lead.name} (${lead.date} ${lead.timeSlot}): ${calendarEventResult.htmlLink}`);
+        
+        logNotificationServer({
+          type: 'calendar_event',
+          recipient: lead.email,
+          title: `📅 Agendado en Google Calendar: ${lead.name}`,
+          message: `La videollamada ha sido agendada automáticamente en el Google Calendar de la agencia para el ${lead.date} a las ${lead.timeSlot} hrs. Sala Meet vinculada.`,
+          status: 'enviado',
+          leadId: lead.id,
+        });
+      } catch (calErr: any) {
+        console.warn('[Google Calendar Sync Warning]', calErr.message);
+      }
+    }
+
+    saveStoredLeads(leads);
+
     logNotificationServer({
       type: 'client_confirmation',
       recipient: lead.email,
       title: `✅ Cita Confirmada por el Cliente: ${lead.name}`,
-      message: `El cliente ${lead.name} (${lead.businessName || 'Empresa'}) confirmó su asistencia desde el correo para el ${lead.date} a las ${lead.timeSlot} hrs.`,
+      message: `El cliente ${lead.name} (${lead.businessName || 'Empresa'}) confirmó su asistencia desde el correo para el ${lead.date} a las ${lead.timeSlot} hrs.${calendarScheduled ? ' (Agendada en Google Calendar)' : ''}`,
       status: 'enviado',
       leadId: lead.id,
     });
@@ -417,8 +583,51 @@ async function startServer() {
     res.json({
       success: true,
       message: 'Cita confirmada con éxito por el cliente',
-      lead,
+      lead: leads[leadIndex],
+      calendarScheduled,
+      calendarLink: calendarEventResult?.htmlLink || null,
     });
+  });
+
+  // Explicitly schedule an existing lead to Google Calendar
+  app.post('/api/leads/:id/schedule-calendar', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const leads = getStoredLeads();
+    const leadIndex = leads.findIndex((l) => l.id === id);
+
+    if (leadIndex === -1) {
+      return res.status(404).json({ error: 'Cita no encontrada' });
+    }
+
+    const lead = leads[leadIndex];
+    const config = getStoredConfig();
+    const token = req.body.token || serverWorkspaceToken || getStoredWorkspaceAuth().token;
+
+    if (!token) {
+      return res.status(400).json({ error: 'No hay token de Google Workspace activo. Conecta tu cuenta en el panel de administración.' });
+    }
+
+    try {
+      const calResult = await scheduleCallInGoogleCalendar(token, lead, config);
+      leads[leadIndex].syncedCalendar = true;
+      leads[leadIndex].calendarEventId = calResult.id;
+      leads[leadIndex].calendarEventLink = calResult.htmlLink;
+      saveStoredLeads(leads);
+
+      logNotificationServer({
+        type: 'calendar_event',
+        recipient: lead.email,
+        title: `📅 Sincronizado en Google Calendar: ${lead.name}`,
+        message: `Llamada agendada exitosamente en Google Calendar para el ${lead.date} a las ${lead.timeSlot} hrs.`,
+        status: 'enviado',
+        leadId: lead.id,
+      });
+
+      res.json({ success: true, lead: leads[leadIndex], calendarLink: calResult.htmlLink });
+    } catch (err: any) {
+      console.error('Error scheduling in Google Calendar:', err);
+      res.status(500).json({ error: err.message || 'Error al agendar en Google Calendar' });
+    }
   });
 
   // Update lead (status, notes, etc)
@@ -521,8 +730,9 @@ async function startServer() {
     if (token) {
       serverWorkspaceToken = token;
       serverWorkspaceEmail = email || 'infinityimpactagency@gmail.com';
-      console.log(`[Workspace API] Google Workspace token synced for ${serverWorkspaceEmail}`);
-      res.json({ success: true, message: 'Google Workspace token sincronizado para envíos de correo en vivo.' });
+      saveStoredWorkspaceAuth(token, serverWorkspaceEmail);
+      console.log(`[Workspace API] Google Workspace token synced and persisted for ${serverWorkspaceEmail}`);
+      res.json({ success: true, message: 'Google Workspace token sincronizado para envíos y Google Calendar en vivo.' });
     } else {
       res.status(400).json({ error: 'Token no proporcionado' });
     }

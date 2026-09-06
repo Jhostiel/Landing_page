@@ -106,17 +106,6 @@ export const InfinityHeroEmblem: React.FC = () => {
             referrerPolicy="no-referrer"
           />
         </div>
-
-        {/* Quality status badge */}
-        <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-          <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-            Identidad Oficial Verificada
-          </span>
-          <span className="tracking-[0.18em] uppercase text-[10px] text-slate-400 font-semibold">
-            AGENCIA IA
-          </span>
-        </div>
       </div>
     </div>
   );

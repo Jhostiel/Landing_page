@@ -22,6 +22,22 @@ export function generateClientConfirmationEmailHtml({
     `Hola ${agencyConfig.agencyName}, tengo una consulta sobre mi cita agendada para el ${lead.date} a las ${lead.timeSlot} hrs.`
   )}`;
 
+  // Construct Google Calendar 1-click add link
+  let gCalUrl = 'https://calendar.google.com';
+  try {
+    const startIso = `${lead.date}T${lead.timeSlot}:00`;
+    const startDate = new Date(startIso);
+    const durationMin = agencyConfig.hoursConfig.slotDurationMinutes || 45;
+    const endDate = new Date(startDate.getTime() + durationMin * 60000);
+    const formatGDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const dates = `${formatGDate(startDate)}/${formatGDate(endDate)}`;
+    const title = `Llamada Estratégica IA: ${lead.name} & ${agencyConfig.agencyName}`;
+    const details = `Sesión Estratégica con ${agencyConfig.agencyName}.\nServicio: ${lead.serviceInterest || 'Consultoría IA'}\nSala Google Meet: ${meetingLink}\n\nAgendado y respaldado por Infinity Impact Agency.`;
+    gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dates}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(meetingLink)}&add=${encodeURIComponent('infinityimpactagency@gmail.com')}&ctz=America/Bogota`;
+  } catch (e) {
+    console.error(e);
+  }
+
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -97,9 +113,19 @@ export function generateClientConfirmationEmailHtml({
                       </tr>
                     </table>
 
-                    <p style="margin: 14px 0 0 0; font-size: 11px; color: #64748b;">
-                      Al confirmar, tu espacio quedará 100% blindado y garantizado en la agenda del equipo directivo.
+                    <p style="margin: 14px 0 6px 0; font-size: 12px; color: #a7f3d0; font-weight: 600;">
+                      📅 Al hacer clic, la cita se agendará automáticamente en el Google Calendar de la agencia.
                     </p>
+                    <p style="margin: 0; font-size: 11px; color: #64748b;">
+                      Tu espacio quedará 100% blindado y garantizado en la agenda del equipo directivo.
+                    </p>
+
+                    <!-- Direct Add to Google Calendar Link for Client -->
+                    <div style="margin-top: 14px; pt-2;">
+                      <a href="${gCalUrl}" target="_blank" style="display: inline-block; padding: 7px 16px; font-size: 11px; font-weight: 600; color: #38bdf8; text-decoration: none; border-radius: 20px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3);">
+                        📅 Añadir a mi Google Calendar personal
+                      </a>
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -249,6 +275,24 @@ export function generateAdminNotificationEmailHtml({
       )}`
     : '#';
 
+  const meetingLink = agencyConfig.notifications.customMeetingLink || 'https://meet.google.com/inf-agen-impact';
+  let gCalAgencyUrl = 'https://calendar.google.com';
+  try {
+    const startIso = `${lead.date}T${lead.timeSlot}:00`;
+    const startDate = new Date(startIso);
+    const durationMin = agencyConfig.hoursConfig.slotDurationMinutes || 45;
+    const endDate = new Date(startDate.getTime() + durationMin * 60000);
+    const formatGDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const dates = `${formatGDate(startDate)}/${formatGDate(endDate)}`;
+    const title = `Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`;
+    const details = `Sesión Estratégica con ${lead.name}.\nEmpresa: ${lead.businessName || ''}\nWhatsApp: ${lead.phone}\nEmail: ${lead.email}\nServicio: ${lead.serviceInterest || 'Consultoría IA'}\nSala Google Meet: ${meetingLink}\n\nAgendada en Infinity Impact Agency.`;
+    gCalAgencyUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dates}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(meetingLink)}&add=${encodeURIComponent('infinityimpactagency@gmail.com')}&src=${encodeURIComponent('infinityimpactagency@gmail.com')}&ctz=America/Bogota`;
+  } catch (e) {
+    console.error(e);
+  }
+
+  const gCalEmbedUrl = agencyConfig.notifications.googleCalendarEmbedUrl || 'https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota';
+
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -298,12 +342,16 @@ export function generateAdminNotificationEmailHtml({
                   <td style="color: #ffffff; font-size: 14px; font-weight: bold;">${lead.date}</td>
                 </tr>
                 <tr>
-                  <td style="color: #94a3b8; font-size: 13px;">⏰ <strong>Hora:</strong></td>
-                  <td style="color: #ffffff; font-size: 14px; font-weight: bold;">${lead.timeSlot} hrs</td>
+                  <td style="color: #94a3b8; font-size: 13px;">⏰ <strong>Hora (Bogotá):</strong></td>
+                  <td style="color: #ffffff; font-size: 14px; font-weight: bold;">${lead.timeSlot} hrs (GMT-5)</td>
                 </tr>
                 <tr>
                   <td style="color: #94a3b8; font-size: 13px;">🚀 <strong>Plan Solicitado:</strong></td>
                   <td style="color: #06b6d4; font-size: 13px; font-weight: 600;">${lead.serviceInterest || 'INFINITY GROWTH'}</td>
+                </tr>
+                <tr>
+                  <td style="color: #94a3b8; font-size: 13px;">📹 <strong>Sala Google Meet:</strong></td>
+                  <td style="color: #a7f3d0; font-size: 13px; font-weight: 600;"><a href="${meetingLink}" target="_blank" style="color: #38bdf8; text-decoration: underline;">${meetingLink}</a></td>
                 </tr>
                 ${
                   lead.notes
@@ -316,14 +364,32 @@ export function generateAdminNotificationEmailHtml({
                 }
               </table>
 
+              <!-- Google Calendar Actions for the Agency -->
+              <div style="background-color: #0b1526; border: 1px solid #1e3a8a; border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: center;">
+                <p style="margin: 0 0 12px 0; font-size: 13px; font-weight: bold; color: #38bdf8;">
+                  📅 Sincronización Google Calendar de la Agencia
+                </p>
+                <div style="margin-bottom: 10px;">
+                  <a href="${gCalAgencyUrl}" target="_blank" style="display: inline-block; background-color: #0284c7; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: bold; margin: 4px;">
+                    📅 Asegurar en Google Calendar (infinityimpactagency@gmail.com)
+                  </a>
+                  <a href="${gCalEmbedUrl}" target="_blank" style="display: inline-block; background-color: #1e293b; color: #94a3b8; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-size: 12px; border: 1px solid #334155; margin: 4px;">
+                    👁️ Ver Calendario Online de la Agencia
+                  </a>
+                </div>
+                <p style="margin: 0; font-size: 11px; color: #64748b;">
+                  Zona Horaria configurada: America/Bogota (GMT-5)
+                </p>
+              </div>
+
               <!-- Quick action links for admin -->
               <div style="text-align: center; margin-bottom: 20px;">
                 ${
                   cleanPhone
-                    ? `<a href="${waClientLink}" target="_blank" style="display: inline-block; background-color: #10b981; color: #07090e; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-size: 13px; font-weight: bold; margin-right: 10px;">💬 Abrir WhatsApp con el Cliente</a>`
+                    ? `<a href="${waClientLink}" target="_blank" style="display: inline-block; background-color: #10b981; color: #07090e; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: bold; margin: 4px;">💬 Contactar por WhatsApp</a>`
                     : ''
                 }
-                <a href="${adminUrl}" target="_blank" style="display: inline-block; background-color: #06b6d4; color: #07090e; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-size: 13px; font-weight: bold;">
+                <a href="${adminUrl}" target="_blank" style="display: inline-block; background-color: #06b6d4; color: #07090e; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: bold; margin: 4px;">
                   🔐 Ver en Panel (/admind)
                 </a>
               </div>

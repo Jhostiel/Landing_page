@@ -46,6 +46,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [agencyConfig, setAgencyConfig] = useState(() => loadAgencyConfig());
 
   // Form fields
+  const [selectedService, setSelectedService] = useState(preselectedPlan || 'Agentes de IA para WhatsApp');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -77,18 +78,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   });
 
-  // Reload config whenever modal opens
   useEffect(() => {
     if (isOpen) {
       const freshConfig = loadAgencyConfig();
       setAgencyConfig(freshConfig);
+      if (preselectedPlan) {
+        setSelectedService(preselectedPlan);
+      }
       try {
         setStoredLeads(JSON.parse(localStorage.getItem('infinity_leads') || '[]'));
       } catch {
         setStoredLeads([]);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedPlan]);
 
   // Compute available slots dynamically based on active agency hours
   const calculatedSlots = useMemo(() => {
@@ -154,7 +157,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             phone,
             businessName,
             businessCategory: category,
-            serviceInterest: preselectedPlan,
+            serviceInterest: selectedService,
             notes,
             date: selectedDate,
             timeSlot: selectedTime,
@@ -190,7 +193,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             await createCalendarEvent(workspaceAuth.accessToken, {
               summary: `Llamada Estratégica IA: ${businessName || name} & Infinity Impact`,
-              description: `Sesión Estratégica de Automatización de Procesos con IA.\n\nCliente: ${name}\nEmpresa: ${businessName}\nRubro: ${category}\nWhatsApp / Tel: ${phone}\nEmail: ${email}\nPlan: ${preselectedPlan}\nEnlace Meet: ${meetingLink}\nNotas: ${notes}`,
+              description: `Sesión Estratégica de Automatización de Procesos con IA.\n\nCliente: ${name}\nEmpresa: ${businessName}\nRubro: ${category}\nWhatsApp / Tel: ${phone}\nEmail: ${email}\nServicio de Interés: ${selectedService}\nEnlace Meet: ${meetingLink}\nNotas: ${notes}`,
               startDateTime: startDate.toISOString(),
               endDateTime: endDate.toISOString(),
               attendeeEmail: email,
@@ -249,7 +252,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         phone,
         businessName,
         businessCategory: category,
-        serviceInterest: preselectedPlan,
+        serviceInterest: selectedService,
         notes,
         date: selectedDate,
         timeSlot: selectedTime,
@@ -368,6 +371,65 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* SERVICIO DE INTERÉS DESTACADO */}
+              <div className="bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-[#121927] border border-emerald-500/35 rounded-2xl p-4 sm:p-4.5 shadow-sm">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                      Servicio de tu Interés
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-emerald-300 bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-medium">
+                    Seleccionado
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={selectedService}
+                    onChange={(e) => setSelectedService(e.target.value)}
+                    className="w-full bg-[#0d131f] border border-cyan-500/40 text-cyan-200 font-semibold text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors cursor-pointer"
+                  >
+                    <optgroup label="Servicios Principales" className="bg-[#0b0f19] text-white">
+                      <option value="Agentes de IA para WhatsApp">🤖 Agentes de IA para WhatsApp</option>
+                      <option value="Generación de Leads con IA">🎯 Generación de Leads con IA</option>
+                      <option value="Páginas Web que Convierten">🌐 Páginas Web que Convierten</option>
+                      <option value="SEO Local + Reputación Inteligente">📍 SEO Local + Reputación Inteligente</option>
+                      <option value="CRM + WhatsApp IA para Profesionales">💼 CRM + WhatsApp IA para Profesionales</option>
+                      <option value="Menús Digitales y Pedidos Automatizados">📱 Menús Digitales y Pedidos Automatizados</option>
+                    </optgroup>
+                    <optgroup label="Paquetes de Crecimiento" className="bg-[#0b0f19] text-white">
+                      <option value="INFINITY WEB">🚀 INFINITY WEB</option>
+                      <option value="INFINITY CHATBOT">⚡ INFINITY CHATBOT</option>
+                      <option value="INFINITY GROWTH">🔥 INFINITY GROWTH</option>
+                      <option value="INFINITY ENTERPRISE">👑 INFINITY ENTERPRISE</option>
+                    </optgroup>
+                    <optgroup label="Otras Opciones" className="bg-[#0b0f19] text-white">
+                      <option value="Consulta General">✨ Asesoría / Consulta General</option>
+                      {selectedService && ![
+                        'Agentes de IA para WhatsApp',
+                        'Generación de Leads con IA',
+                        'Páginas Web que Convierten',
+                        'SEO Local + Reputación Inteligente',
+                        'CRM + WhatsApp IA para Profesionales',
+                        'Menús Digitales y Pedidos Automatizados',
+                        'INFINITY WEB',
+                        'INFINITY CHATBOT',
+                        'INFINITY GROWTH',
+                        'INFINITY ENTERPRISE',
+                        'Consulta General'
+                      ].includes(selectedService) && (
+                        <option value={selectedService}>{selectedService}</option>
+                      )}
+                    </optgroup>
+                  </select>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>Enfocaremos la llamada estratégica directamente en este servicio para tu negocio.</span>
+                </p>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
@@ -602,7 +664,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="mt-4 p-4 rounded-xl bg-[#131924] border border-slate-800 text-left text-xs space-y-2 max-w-md mx-auto">
               <div className="font-semibold text-slate-200 border-b border-slate-800 pb-2 flex justify-between items-center">
                 <span>Resumen de la sesión</span>
-                <span className="text-cyan-400 font-semibold">{preselectedPlan}</span>
+                <span className="text-cyan-400 font-semibold">{selectedService}</span>
               </div>
               <div className="text-slate-400 space-y-1">
                 <p>👤 <strong>Cliente:</strong> {name} ({businessName || 'Empresa'})</p>

@@ -49,29 +49,52 @@ declare global {
  * Creates an event in Google Calendar using Google Calendar REST API
  */
 export async function createCalendarEvent(token: string, event: GoogleEventPayload) {
-  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+  const agencyCalendarId = 'infinityimpactagency@gmail.com';
+  const attendeesList: Array<{ email: string; displayName?: string; responseStatus?: string }> = [
+    { email: agencyCalendarId, displayName: 'Infinity Impact Agency', responseStatus: 'accepted' },
+  ];
+  if (event.attendeeEmail && event.attendeeEmail.toLowerCase() !== agencyCalendarId.toLowerCase()) {
+    attendeesList.push({ email: event.attendeeEmail });
+  }
+
+  const payload = {
+    summary: event.summary,
+    description: event.description,
+    start: {
+      dateTime: event.startDateTime,
+      timeZone: 'America/Bogota',
+    },
+    end: {
+      dateTime: event.endDateTime,
+      timeZone: 'America/Bogota',
+    },
+    attendees: attendeesList,
+    reminders: {
+      useDefault: true,
+    },
+  };
+
+  // 1. Try targeting infinityimpactagency@gmail.com directly
+  let res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(agencyCalendarId)}/events?sendUpdates=all`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      summary: event.summary,
-      description: event.description,
-      start: {
-        dateTime: event.startDateTime,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      },
-      end: {
-        dateTime: event.endDateTime,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      },
-      attendees: event.attendeeEmail ? [{ email: event.attendeeEmail }] : [],
-      reminders: {
-        useDefault: true,
-      },
-    }),
+    body: JSON.stringify(payload),
   });
+
+  // 2. Fallback to primary if direct calendar access fails
+  if (!res.ok && (res.status === 404 || res.status === 403)) {
+    res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+  }
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));

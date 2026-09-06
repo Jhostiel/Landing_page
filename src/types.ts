@@ -13,6 +13,8 @@ export interface LeadData {
   createdAt: number;
   confirmedAt?: number;
   syncedCalendar?: boolean;
+  calendarEventId?: string;
+  calendarEventLink?: string;
   sentEmail?: boolean;
   adminNotified?: boolean;
 }
@@ -45,6 +47,8 @@ export interface AdminNotificationSettings {
   customMeetingLink: string;
   notifyGoogleChat: boolean;
   chatSpaceName: string;
+  googleCalendarId?: string;
+  googleCalendarEmbedUrl?: string;
 }
 
 export interface AgencySiteConfig {
@@ -96,6 +100,7 @@ export interface PricingPlan {
   priceDetail: string;
   features: string[];
   buttonText: string;
+  cta?: string;
   popular?: boolean;
   accentGradient?: string;
 }
