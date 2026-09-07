@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Touch feedback and mobile tap responsiveness */
+button, a, [role="button"], .touch-tap {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Subtle active glow for interactive controls */
+button:active:not(:disabled), 
+a:active, 
+.touch-card:active {
+  transform: scale(0.97);
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.4, 1);
+}

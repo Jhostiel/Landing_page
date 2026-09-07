@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar,
   Clock,
@@ -300,18 +301,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const availableSlotsCount = calculatedSlots.filter((s) => s.available).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-fadeIn">
-      <div
-        className="relative w-full max-w-xl bg-[#0c1017] border border-slate-800 rounded-2xl p-6 sm:p-8 text-slate-100 shadow-2xl my-8"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 15 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+        className="relative w-full max-w-xl bg-[#0c1017] border border-slate-800 rounded-2xl p-6 sm:p-8 text-slate-100 shadow-2xl my-8 touch-card"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition-colors"
+          className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition-colors cursor-pointer"
           aria-label="Cerrar modal"
         >
           <X size={20} />
-        </button>
+        </motion.button>
 
         {step === 'form' ? (
           <div>
@@ -550,12 +557,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-36 overflow-y-auto pr-1">
                     {calculatedSlots.map((item) => (
-                      <button
+                      <motion.button
                         key={item.slot}
                         type="button"
+                        whileHover={item.available ? { scale: 1.05 } : {}}
+                        whileTap={item.available ? { scale: 0.92 } : {}}
                         disabled={!item.available}
                         onClick={() => setSelectedTime(item.slot)}
-                        className={`py-2 px-2 rounded-xl text-xs font-mono font-medium text-center transition-all border ${
+                        className={`py-2 px-2 rounded-xl text-xs font-mono font-medium text-center transition-all border cursor-pointer ${
                           selectedTime === item.slot && item.available
                             ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold shadow-md shadow-cyan-500/20'
                             : item.available
@@ -564,7 +573,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         }`}
                       >
                         {item.slot} hrs
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 )}
@@ -609,14 +618,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 text-sm text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2.5 text-sm text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button
+                <motion.button
                   type="submit"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.94 }}
                   disabled={isSubmitting || availableSlotsCount === 0}
-                  className="flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 active:scale-[0.98] transition-all disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
@@ -629,12 +640,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       <span>Confirmar Llamada Estratégica</span>
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
             </form>
           </div>
         ) : (
-          <div className="text-center py-6 animate-fadeIn">
+          <div className="text-center py-6">
             <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto mb-4 shadow-lg shadow-cyan-500/20">
               <CheckCircle2 size={36} />
             </div>
@@ -675,16 +686,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
 
             <div className="mt-6 flex justify-center">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.94 }}
                 onClick={handleReset}
-                className="px-8 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white transition-all shadow-md shadow-cyan-500/20"
+                className="px-8 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
               >
                 Listo, volver al sitio
-              </button>
+              </motion.button>
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };

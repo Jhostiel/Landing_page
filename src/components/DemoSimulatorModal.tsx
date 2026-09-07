@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Bot, Send, User, Sparkles, Calendar, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface Message {
@@ -92,9 +93,13 @@ export const DemoSimulatorModal: React.FC<DemoSimulatorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-fadeIn">
-      <div
-        className="relative w-full max-w-md bg-[#0b0e14] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[580px]"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.93, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.93, y: 20 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+        className="relative w-full max-w-md bg-[#0b0e14] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[580px] touch-card"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Chat header WhatsApp style */}
@@ -116,19 +121,23 @@ export const DemoSimulatorModal: React.FC<DemoSimulatorModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={handleReset}
               title="Reiniciar chat"
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <RotateCcw size={15} />
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer text-sm"
             >
               ✕
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -169,27 +178,33 @@ export const DemoSimulatorModal: React.FC<DemoSimulatorModalProps> = ({
 
         {/* Quick action chips */}
         <div className="px-3 py-2 bg-[#0d131d] border-t border-slate-800/80 flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.93 }}
             onClick={() => handleSend('¿Cómo funciona el agente para agendar citas?')}
-            className="whitespace-nowrap px-2.5 py-1 bg-slate-800/70 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700/50 transition-colors"
+            className="whitespace-nowrap px-2.5 py-1 bg-slate-800/70 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700/50 transition-colors cursor-pointer"
           >
             📅 Agendamiento
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.93 }}
             onClick={() => handleSend('¿Cuánto cuesta implementar Infinity Growth?')}
-            className="whitespace-nowrap px-2.5 py-1 bg-slate-800/70 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700/50 transition-colors"
+            className="whitespace-nowrap px-2.5 py-1 bg-slate-800/70 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700/50 transition-colors cursor-pointer"
           >
             💰 Precios
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.93 }}
             onClick={() => {
               onClose();
               onOpenBooking();
             }}
-            className="whitespace-nowrap px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-full border border-emerald-500/30 transition-colors font-medium flex items-center gap-1"
+            className="whitespace-nowrap px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-full border border-emerald-500/30 transition-colors font-medium flex items-center gap-1 cursor-pointer"
           >
             <Calendar size={11} /> Agendar llamada real
-          </button>
+          </motion.button>
         </div>
 
         {/* Input bar */}
@@ -207,15 +222,17 @@ export const DemoSimulatorModal: React.FC<DemoSimulatorModalProps> = ({
             placeholder="Escribe un mensaje de prueba..."
             className="flex-1 bg-[#1e293b] border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
           />
-          <button
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.9 }}
             type="submit"
             disabled={!inputVal.trim()}
-            className="p-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold rounded-xl transition-all"
+            className="p-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold rounded-xl transition-all cursor-pointer"
           >
             <Send size={15} />
-          </button>
+          </motion.button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 };

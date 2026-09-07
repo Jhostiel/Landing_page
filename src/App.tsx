@@ -35,6 +35,8 @@ import { BookingModal } from './components/BookingModal';
 import { DemoSimulatorModal } from './components/DemoSimulatorModal';
 import { WorkspaceDashboard } from './components/WorkspaceDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
+import { TactileRipple } from './components/TactileRipple';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   TRUST_CLIENTS,
   SERVICES_LIST,
@@ -460,7 +462,10 @@ export default function App() {
   const waContactLink = `https://wa.me/${cleanWhatsAppNumber}?text=${encodeURIComponent('Hola Infinity Impact Agency, deseo información sobre sus servicios de automatización con IA.')}`;
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] selection:bg-emerald-500/30 selection:text-emerald-300">
+    <div className="min-h-screen bg-[#07090e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] selection:bg-emerald-500/30 selection:text-emerald-300 relative">
+      {/* Global Tactile Touch & Click Ripple Feedback */}
+      <TactileRipple />
+
       {/* Top ambient atmosphere */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] bg-gradient-to-b from-blue-600/10 via-emerald-500/5 to-transparent blur-[140px]" />
@@ -470,43 +475,51 @@ export default function App() {
       {/* NAVBAR */}
       <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-[#07090e]/85 border-b border-slate-800/80 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <a href="#" className="flex items-center gap-3">
+          <motion.a
+            href="#"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-3 cursor-pointer"
+          >
             <InfinityLogo size={36} />
-          </a>
+          </motion.a>
 
           {/* Desktop Navigation links */}
           <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-xs sm:text-sm font-medium text-slate-300">
-            <a href="#inicio" className="text-white hover:text-emerald-400 transition-colors">
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#inicio" className="text-white hover:text-emerald-400 transition-colors">
               Inicio
-            </a>
-            <a href="#servicios" className="flex items-center gap-1 hover:text-emerald-400 transition-colors">
+            </motion.a>
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#servicios" className="flex items-center gap-1 hover:text-emerald-400 transition-colors">
               Servicios <ChevronDown size={13} className="text-slate-500" />
-            </a>
-            <a href="#paquetes" className="hover:text-emerald-400 transition-colors">
+            </motion.a>
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#paquetes" className="hover:text-emerald-400 transition-colors">
               Paquetes
-            </a>
-            <a href="#industrias" className="hover:text-emerald-400 transition-colors">
+            </motion.a>
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#industrias" className="hover:text-emerald-400 transition-colors">
               Industrias
-            </a>
-            <a href="#casos" className="hover:text-emerald-400 transition-colors">
+            </motion.a>
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#casos" className="hover:text-emerald-400 transition-colors">
               Casos de Éxito
-            </a>
-            <a href="#nosotros" className="hover:text-emerald-400 transition-colors">
+            </motion.a>
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#nosotros" className="hover:text-emerald-400 transition-colors">
               Nosotros
-            </a>
-            <a href="#contacto" className="hover:text-emerald-400 transition-colors">
+            </motion.a>
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#contacto" className="hover:text-emerald-400 transition-colors">
               Contacto
-            </a>
+            </motion.a>
           </nav>
 
-          {/* Top CTA button */}
+          {/* Top CTA button with responsive tactile feedback */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
               onClick={() => handleOpenBooking('Consulta General')}
-              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold border border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 to-emerald-500/15 hover:border-cyan-400 text-cyan-300 hover:text-white transition-all shadow-sm active:scale-95"
+              className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold border border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 to-emerald-500/15 hover:border-cyan-400 text-cyan-300 hover:text-white transition-all shadow-sm active:scale-95 cursor-pointer"
             >
               Agenda una llamada
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
@@ -516,40 +529,71 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* Left Column: Headline & Value Prop */}
-            <div className="lg:col-span-7 space-y-7 text-left">
+            {/* Left Column: Headline & Value Prop with fade-in */}
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-7 space-y-7 text-left"
+            >
               {/* Massive Main Heading */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.12] font-['Outfit']">
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
+                className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.12] font-['Outfit']"
+              >
                 {agencyConfig.headline}
-              </h1>
+              </motion.h1>
 
               {/* Subheading text */}
-              <p className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed font-normal">
+              <motion.p
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
+                className="text-base sm:text-lg text-slate-300 max-w-2xl leading-relaxed font-normal"
+              >
                 {agencyConfig.subheadline}
-              </p>
+              </motion.p>
 
               {/* CTA Buttons */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <a
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
+                className="flex flex-wrap items-center gap-4 pt-2"
+              >
+                <motion.a
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.93 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   href="#servicios"
-                  className="px-6 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black shadow-lg shadow-emerald-500/20 active:scale-95 transition-all text-center"
+                  className="px-6 py-3.5 rounded-full font-semibold text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black shadow-lg shadow-emerald-500/20 transition-all text-center cursor-pointer"
                 >
                   Ver servicios
-                </a>
+                </motion.a>
 
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.93 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   onClick={() => setIsDemoOpen(true)}
-                  className="px-6 py-3.5 rounded-full font-semibold text-sm border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center gap-2.5 transition-all active:scale-95"
+                  className="px-6 py-3.5 rounded-full font-semibold text-sm border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center gap-2.5 transition-all cursor-pointer"
                 >
                   <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400">
                     <Play size={10} className="ml-0.5 fill-current" />
                   </div>
                   <span>Ver cómo funciona</span>
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
 
-              {/* Stats Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-8 border-t border-slate-800/80">
+              {/* Stats Bar with stagger */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-8 border-t border-slate-800/80"
+              >
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-slate-200 font-bold text-xl sm:text-2xl font-['Outfit']">
                     <Users size={18} className="text-purple-400" />
@@ -581,20 +625,32 @@ export default function App() {
                   </div>
                   <div className="text-xs text-slate-400 font-medium">Satisfacción de clientes</div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
             {/* Right Column: 3D Infinity Emblem */}
-            <div className="lg:col-span-5 relative flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.85, delay: 0.25, ease: 'easeOut' }}
+              className="lg:col-span-5 relative flex items-center justify-center"
+            >
               <InfinityHeroEmblem />
-            </div>
+            </motion.div>
 
           </div>
         </div>
       </section>
 
+
       {/* TRUSTED BY */}
-      <section className="py-12 border-y border-slate-800/80 bg-[#0a0d14]/60">
+      <motion.section
+        initial={{ opacity: 0, y: 25 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="py-12 border-y border-slate-800/80 bg-[#0a0d14]/60"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-[11px] font-semibold tracking-[0.25em] text-slate-400 uppercase mb-8">
             NEGOCIOS QUE CONFÍAN EN NOSOTROS
@@ -602,8 +658,17 @@ export default function App() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 items-center justify-items-center opacity-75 hover:opacity-100 transition-opacity">
             {TRUST_CLIENTS.map((client, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-2 p-3 group cursor-default">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:border-slate-700 group-hover:scale-110 transition-all">
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.06 }}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="flex flex-col items-center gap-2 p-3 group cursor-pointer touch-card"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:border-slate-700 group-hover:scale-110 transition-all shadow-sm">
                   {getClientIcon(client.icon)}
                 </div>
                 <div className="text-center">
@@ -614,16 +679,22 @@ export default function App() {
                     {client.sub}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* SERVICES SECTION */}
       <section id="servicios" className="py-24 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-center max-w-3xl mx-auto mb-16 space-y-3"
+          >
             <span className="text-xs font-bold tracking-widest text-emerald-400 uppercase">
               NUESTROS SERVICIOS
             </span>
@@ -633,17 +704,24 @@ export default function App() {
             <p className="text-sm sm:text-base text-slate-400">
               Diseñadas específicamente para negocios que quieren crecer sin complicarse la vida.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map((service) => (
-              <div
+            {services.map((service, sIdx) => (
+              <motion.div
                 key={service.id}
-                className="group relative rounded-2xl p-7 bg-[#0d121c]/90 border border-slate-800/80 hover:border-slate-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between"
+                initial={{ opacity: 0, y: 35 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{ duration: 0.5, delay: sIdx * 0.08, ease: 'easeOut' }}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleOpenBooking(service.title)}
+                className="group relative rounded-2xl p-7 bg-[#0d121c]/90 border border-slate-800/80 hover:border-slate-700 hover:shadow-xl hover:shadow-emerald-500/5 transition-all flex flex-col justify-between touch-card cursor-pointer"
               >
                 <div>
                   <div className="flex items-start justify-between mb-5">
-                    <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:scale-110 group-hover:border-emerald-500/50 transition-all shadow-sm">
                       {getServiceIcon(service.icon)}
                     </div>
                     <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/60">
@@ -670,15 +748,20 @@ export default function App() {
                     ))}
                   </ul>
 
-                  <button
-                    onClick={() => handleOpenBooking(service.title)}
-                    className="w-full pt-2 flex items-center justify-between text-xs font-semibold text-slate-300 group-hover:text-emerald-400 transition-colors"
+                  <motion.button
+                    whileHover={{ x: 3 }}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenBooking(service.title);
+                    }}
+                    className="w-full pt-2 flex items-center justify-between text-xs font-semibold text-slate-300 group-hover:text-emerald-400 transition-colors cursor-pointer"
                   >
                     <span>Me interesa este servicio</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  </motion.button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -687,7 +770,13 @@ export default function App() {
       {/* WHY US / VALUE PROPOSITIONS */}
       <section id="nosotros" className="py-20 bg-[#090d14] border-y border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-center max-w-2xl mx-auto mb-16 space-y-3"
+          >
             <span className="text-xs font-bold tracking-widest text-emerald-400 uppercase">
               ¿POR QUÉ ELEGIRNOS?
             </span>
@@ -697,15 +786,21 @@ export default function App() {
             <p className="text-sm text-slate-400">
               Combinamos tecnología de punta con una obsesión por los resultados comerciales de tu negocio.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {VALUE_PROPOSITIONS.map((vp, idx) => (
-              <div
+              <motion.div
                 key={idx}
-                className="p-6 rounded-2xl bg-[#0c1017] border border-slate-800 hover:border-slate-700 transition-all text-left"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{ duration: 0.45, delay: idx * 0.08, ease: 'easeOut' }}
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                whileTap={{ scale: 0.96 }}
+                className="p-6 rounded-2xl bg-[#0c1017] border border-slate-800 hover:border-slate-700 transition-all text-left touch-card cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4 shadow-sm">
                   {getValueIcon(vp.icon)}
                 </div>
                 <h4 className="text-base font-bold text-white mb-2 font-['Outfit']">
@@ -714,7 +809,7 @@ export default function App() {
                 <p className="text-xs text-slate-400 leading-relaxed">
                   {vp.desc}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -723,7 +818,13 @@ export default function App() {
       {/* PRICING PLANS */}
       <section id="paquetes" className="py-24 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-center max-w-3xl mx-auto mb-16 space-y-3"
+          >
             <span className="text-xs font-bold tracking-widest text-emerald-400 uppercase">
               PLANES Y PRECIOS
             </span>
@@ -733,20 +834,26 @@ export default function App() {
             <p className="text-sm sm:text-base text-slate-400">
               Inversión transparente sin costos ocultos. Comienza con lo que necesitas hoy y escala mañana.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-            {pricing.map((plan) => (
-              <div
+            {pricing.map((plan, pIdx) => (
+              <motion.div
                 key={plan.id}
-                className={`rounded-2xl p-7 flex flex-col justify-between transition-all relative ${
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{ duration: 0.5, delay: pIdx * 0.08, ease: 'easeOut' }}
+                whileHover={{ y: plan.popular ? -8 : -5, transition: { duration: 0.2 } }}
+                whileTap={{ scale: 0.97 }}
+                className={`rounded-2xl p-7 flex flex-col justify-between transition-colors relative touch-card ${
                   plan.popular
-                    ? 'bg-[#0f1726] border-2 border-emerald-500/80 shadow-2xl shadow-emerald-500/10 -translate-y-2'
+                    ? 'bg-[#0f1726] border-2 border-emerald-500/80 shadow-2xl shadow-emerald-500/15'
                     : 'bg-[#0c1017] border border-slate-800 hover:border-slate-700'
                 }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[10px] tracking-wider uppercase">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[10px] tracking-wider uppercase shadow-md shadow-emerald-500/30">
                     MÁS POPULAR
                   </div>
                 )}
@@ -781,9 +888,12 @@ export default function App() {
                   </ul>
                 </div>
 
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   onClick={() => handleOpenBooking(plan.name)}
-                  className={`w-full py-3.5 px-4 rounded-full text-xs font-bold transition-all shadow-md active:scale-95 group flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`w-full py-3.5 px-4 rounded-full text-xs font-bold transition-all shadow-md group flex items-center justify-center gap-2 cursor-pointer touch-tap ${
                     plan.popular
                       ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 font-extrabold hover:from-emerald-400 hover:to-emerald-300 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40'
                       : 'bg-slate-800/90 hover:bg-slate-700 text-white border border-slate-700/80 hover:border-slate-600'
@@ -798,8 +908,8 @@ export default function App() {
                       plan.popular ? 'text-slate-950' : 'text-emerald-400'
                     }`}
                   />
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -808,7 +918,13 @@ export default function App() {
       {/* INDUSTRIES & SUCCESS CASES */}
       <section id="industrias" className="py-20 bg-[#090d14] border-t border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-center max-w-2xl mx-auto mb-16 space-y-3"
+          >
             <span className="text-xs font-bold tracking-widest text-emerald-400 uppercase">
               SECTORES ESPECIALIZADOS
             </span>
@@ -818,13 +934,19 @@ export default function App() {
             <p className="text-sm text-slate-400">
               Adaptamos cada flujo y agente de IA a las dinámicas concretas de tu sector.
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {INDUSTRY_CASES.map((item, idx) => (
-              <div
+              <motion.div
                 key={idx}
-                className="p-7 rounded-2xl bg-[#0c1017] border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{ duration: 0.5, delay: idx * 0.08, ease: 'easeOut' }}
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                whileTap={{ scale: 0.96 }}
+                className="p-7 rounded-2xl bg-[#0c1017] border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between touch-card cursor-pointer"
               >
                 <div>
                   <div className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-emerald-400 mb-4">
@@ -846,14 +968,16 @@ export default function App() {
                   </div>
                 </div>
 
-                <button
+                <motion.button
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.93 }}
                   onClick={() => handleOpenBooking(`Caso ${item.industry}`)}
-                  className="mt-6 text-xs text-slate-300 hover:text-emerald-400 font-semibold flex items-center gap-1.5 transition-colors"
+                  className="mt-6 text-xs text-slate-300 hover:text-emerald-400 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <span>Quiero estos resultados</span>
                   <ArrowRight size={13} />
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -861,7 +985,13 @@ export default function App() {
 
       {/* CALL TO ACTION BOTTOM BANNER */}
       <section id="contacto" className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <div className="relative rounded-3xl p-8 sm:p-14 bg-gradient-to-b from-[#111724] to-[#0a0d14] border border-slate-800 text-center overflow-hidden shadow-2xl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 30 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.25 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="relative rounded-3xl p-8 sm:p-14 bg-gradient-to-b from-[#111724] to-[#0a0d14] border border-slate-800 text-center overflow-hidden shadow-2xl"
+        >
           <div className="absolute -top-24 -left-24 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
 
@@ -874,24 +1004,30 @@ export default function App() {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <a
+            <motion.a
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.93 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
               href={waContactLink}
               target="_blank"
               rel="noreferrer"
-              className="px-7 py-3.5 rounded-full font-bold text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black shadow-lg shadow-emerald-500/25 active:scale-95 transition-all flex items-center gap-2"
+              className="px-7 py-3.5 rounded-full font-bold text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2 cursor-pointer touch-tap"
             >
               <MessageSquareText size={16} />
               <span>Hablar por WhatsApp ({agencyConfig.whatsappNumber})</span>
-            </a>
+            </motion.a>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.93 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
               onClick={() => handleOpenBooking('CTA Final')}
-              className="px-7 py-3.5 rounded-full font-semibold text-sm border border-slate-700 bg-slate-900/90 hover:bg-slate-800 text-white transition-all active:scale-95"
+              className="px-7 py-3.5 rounded-full font-semibold text-sm border border-slate-700 bg-slate-900/90 hover:bg-slate-800 text-white transition-all cursor-pointer touch-tap"
             >
               Agendar Llamada Estratégica
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* FOOTER */}
@@ -936,129 +1072,141 @@ export default function App() {
       />
 
       {/* CLIENT CONFIRMATION CELEBRATION MODAL */}
-      {confirmedBookingData && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="relative w-full max-w-lg bg-[#0b0f19] border border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-emerald-500/10 text-center">
-            {/* Ambient emerald ring */}
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500/20 via-cyan-500/20 to-blue-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto mb-5 shadow-lg shadow-emerald-500/20">
-              <CheckCircle2 size={42} />
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-3">
-              <Sparkles size={12} />
-              Cita Oficialmente Confirmada
-            </div>
-
-            <h3 className="text-2xl sm:text-3xl font-bold text-white font-['Outfit']">
-              ¡Gracias por Confirmar, {confirmedBookingData.name}!
-            </h3>
-
-            <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-              Tu asistencia a la llamada estratégica con los directores de <strong className="text-cyan-400">Infinity Impact Agency</strong> está 100% blindada. Nuestro panel administrativo ha sido notificado al instante.
-            </p>
-
-            <div className="mt-6 p-4 rounded-2xl bg-[#131926] border border-slate-800 text-left text-xs space-y-2.5">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-slate-400">
-                <span className="font-semibold text-slate-200">Detalles de la Cita:</span>
-                <span className="text-emerald-400 font-bold">Estado: Confirmado</span>
+      <AnimatePresence>
+        {confirmedBookingData && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="relative w-full max-w-lg bg-[#0b0f19] border border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-emerald-500/10 text-center"
+            >
+              {/* Ambient emerald ring */}
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500/20 via-cyan-500/20 to-blue-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto mb-5 shadow-lg shadow-emerald-500/20">
+                <CheckCircle2 size={42} />
               </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Calendar size={14} className="text-cyan-400 shrink-0" />
-                <span><strong>Fecha:</strong> {confirmedBookingData.date}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Clock size={14} className="text-emerald-400 shrink-0" />
-                <span><strong>Hora:</strong> {confirmedBookingData.timeSlot} hrs</span>
-              </div>
-              {confirmedBookingData.businessName && (
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Building2 size={14} className="text-blue-400 shrink-0" />
-                  <span><strong>Empresa:</strong> {confirmedBookingData.businessName}</span>
-                </div>
-              )}
-              {confirmedBookingData.serviceInterest && (
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Sparkles size={14} className="text-amber-400 shrink-0" />
-                  <span><strong>Servicio de Interés:</strong> <span className="text-cyan-300 font-semibold">{confirmedBookingData.serviceInterest}</span></span>
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-slate-300">
-                <Laptop size={14} className="text-purple-400 shrink-0" />
-                <span className="truncate"><strong>Sala Virtual:</strong> {confirmedBookingData.meetingLink}</span>
-              </div>
-            </div>
 
-            {/* Google Calendar Auto-Schedule Status Banner */}
-            <div className="mt-4 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-emerald-300 text-left">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                  <Calendar size={13} />
-                </div>
-                <span>
-                  <strong>Google Calendar de la Agencia:</strong>{' '}
-                  {confirmedBookingData.calendarScheduled
-                    ? 'Agendado y sincronizado automáticamente con éxito.'
-                    : 'Cita registrada y confirmada en la agenda oficial.'}
-                </span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-3">
+                <Sparkles size={12} />
+                Cita Oficialmente Confirmada
               </div>
-              {confirmedBookingData.calendarLink && (
-                <a
-                  href={confirmedBookingData.calendarLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold flex items-center gap-1 shrink-0 text-[11px] transition-colors"
-                >
-                  <span>Ver evento</span>
-                  <ExternalLink size={10} />
-                </a>
-              )}
-            </div>
 
-            {/* Client Add to Calendar Options */}
-            <div className="mt-4 p-3 rounded-2xl bg-slate-900/60 border border-slate-800 text-left">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                📅 Añadir a tu calendario personal:
+              <h3 className="text-2xl sm:text-3xl font-bold text-white font-['Outfit']">
+                ¡Gracias por Confirmar, {confirmedBookingData.name}!
+              </h3>
+
+              <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                Tu asistencia a la llamada estratégica con los directores de <strong className="text-cyan-400">Infinity Impact Agency</strong> está 100% blindada. Nuestro panel administrativo ha sido notificado al instante.
               </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <a
-                  href={getGoogleCalendarUrl(confirmedBookingData)}
+
+              <div className="mt-6 p-4 rounded-2xl bg-[#131926] border border-slate-800 text-left text-xs space-y-2.5">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-slate-400">
+                  <span className="font-semibold text-slate-200">Detalles de la Cita:</span>
+                  <span className="text-emerald-400 font-bold">Estado: Confirmado</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Calendar size={14} className="text-cyan-400 shrink-0" />
+                  <span><strong>Fecha:</strong> {confirmedBookingData.date}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Clock size={14} className="text-emerald-400 shrink-0" />
+                  <span><strong>Hora:</strong> {confirmedBookingData.timeSlot} hrs</span>
+                </div>
+                {confirmedBookingData.businessName && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Building2 size={14} className="text-blue-400 shrink-0" />
+                    <span><strong>Empresa:</strong> {confirmedBookingData.businessName}</span>
+                  </div>
+                )}
+                {confirmedBookingData.serviceInterest && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Sparkles size={14} className="text-amber-400 shrink-0" />
+                    <span><strong>Servicio de Interés:</strong> <span className="text-cyan-300 font-semibold">{confirmedBookingData.serviceInterest}</span></span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Laptop size={14} className="text-purple-400 shrink-0" />
+                  <span className="truncate"><strong>Sala Virtual:</strong> {confirmedBookingData.meetingLink}</span>
+                </div>
+              </div>
+
+              {/* Google Calendar Auto-Schedule Status Banner */}
+              <div className="mt-4 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-emerald-300 text-left">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                    <Calendar size={13} />
+                  </div>
+                  <span>
+                    <strong>Google Calendar de la Agencia:</strong>{' '}
+                    {confirmedBookingData.calendarScheduled
+                      ? 'Agendado y sincronizado automáticamente con éxito.'
+                      : 'Cita registrada y confirmada en la agenda oficial.'}
+                  </span>
+                </div>
+                {confirmedBookingData.calendarLink && (
+                  <a
+                    href={confirmedBookingData.calendarLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold flex items-center gap-1 shrink-0 text-[11px] transition-colors"
+                  >
+                    <span>Ver evento</span>
+                    <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+
+              {/* Client Add to Calendar Options */}
+              <div className="mt-4 p-3 rounded-2xl bg-slate-900/60 border border-slate-800 text-left">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  📅 Añadir a tu calendario personal:
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={getGoogleCalendarUrl(confirmedBookingData)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Calendar size={13} />
+                    <span>Google Calendar</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <button
+                    onClick={() => downloadIcsFile(confirmedBookingData)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>Apple / Outlook (.ics)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <motion.a
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.94 }}
+                  href={confirmedBookingData.meetingLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
                 >
-                  <Calendar size={13} />
-                  <span>Google Calendar</span>
-                  <ExternalLink size={11} />
-                </a>
-                <button
-                  onClick={() => downloadIcsFile(confirmedBookingData)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  <span>Acceder a la Sala Meet</span>
+                  <ExternalLink size={13} />
+                </motion.a>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => setConfirmedBookingData(null)}
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
                 >
-                  <span>Apple / Outlook (.ics)</span>
-                </button>
+                  Cerrar y continuar al sitio
+                </motion.button>
               </div>
-            </div>
-
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <a
-                href={confirmedBookingData.meetingLink}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
-              >
-                <span>Acceder a la Sala Meet</span>
-                <ExternalLink size={13} />
-              </a>
-              <button
-                onClick={() => setConfirmedBookingData(null)}
-                className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-              >
-                Cerrar y continuar al sitio
-              </button>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
