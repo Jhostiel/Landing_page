@@ -25,7 +25,6 @@ import {
   Check,
   Play,
   Mail,
-  ChevronDown,
   ExternalLink,
   Lock,
   CheckCircle2
@@ -485,24 +484,21 @@ export default function App() {
           </motion.a>
 
           {/* Desktop Navigation links */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-xs sm:text-sm font-medium text-slate-300">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-xs sm:text-sm font-medium text-slate-300">
             <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#inicio" className="text-white hover:text-emerald-400 transition-colors">
               Inicio
             </motion.a>
-            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#servicios" className="flex items-center gap-1 hover:text-emerald-400 transition-colors">
-              Servicios <ChevronDown size={13} className="text-slate-500" />
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#servicios" className="hover:text-emerald-400 transition-colors">
+              Servicios
+            </motion.a>
+            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#nosotros" className="hover:text-emerald-400 transition-colors">
+              Nosotros
             </motion.a>
             <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#paquetes" className="hover:text-emerald-400 transition-colors">
               Paquetes
             </motion.a>
             <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#industrias" className="hover:text-emerald-400 transition-colors">
               Industrias
-            </motion.a>
-            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#casos" className="hover:text-emerald-400 transition-colors">
-              Casos de Éxito
-            </motion.a>
-            <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#nosotros" className="hover:text-emerald-400 transition-colors">
-              Nosotros
             </motion.a>
             <motion.a whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} href="#contacto" className="hover:text-emerald-400 transition-colors">
               Contacto
@@ -1036,25 +1032,21 @@ export default function App() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-800/80 bg-[#05070a] py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-400">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
+      <footer className="border-t border-slate-800/80 bg-[#05070a] py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <motion.a
+            href="#inicio"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-3 cursor-pointer"
+            title="Volver al inicio"
+          >
             <InfinityLogo size={32} />
-            <span className="text-[11px] text-slate-500">
-              Horario de atención: <strong className="text-slate-300">{agencyConfig.supportHoursText}</strong>
-            </span>
-          </div>
+          </motion.a>
 
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <a href="#inicio" className="hover:text-slate-200 transition-colors">Inicio</a>
-            <a href="#servicios" className="hover:text-slate-200 transition-colors">Servicios</a>
-            <a href="#paquetes" className="hover:text-slate-200 transition-colors">Paquetes</a>
-            <a href="#contacto" className="hover:text-slate-200 transition-colors">Contacto</a>
-          </div>
-
-          <div className="text-center md:text-right text-slate-500 text-[11px]">
-            © 2026 {agencyConfig.agencyName}. Todos los derechos reservados.
-          </div>
+          <p className="text-xs text-slate-500 text-center sm:text-right font-normal">
+            © 2026 Infinity Impact Agency. Todos los derechos reservados.
+          </p>
         </div>
       </footer>
 
