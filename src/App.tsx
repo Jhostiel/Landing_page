@@ -952,9 +952,14 @@ export default function App() {
                   <div className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-emerald-400 mb-4">
                     {item.industry}
                   </div>
-                  <h4 className="text-base font-bold text-white mb-2 font-['Outfit']">
+                  <h4 className="text-base font-bold text-white mb-1.5 font-['Outfit']">
                     {item.leadIncrease} en Crecimiento
                   </h4>
+                  {item.tagline && (
+                    <p className="text-xs font-medium text-emerald-300/90 mb-2 leading-snug">
+                      {item.tagline}
+                    </p>
+                  )}
                   <p className="text-xs text-slate-400 leading-relaxed mb-6">
                     {item.desc}
                   </p>

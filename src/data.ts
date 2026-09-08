@@ -201,27 +201,39 @@ export const VALUE_PROPOSITIONS = [
   }
 ];
 
-export const INDUSTRY_CASES = [
+export interface IndustryCase {
+  industry: string;
+  tagline?: string;
+  leadIncrease: string;
+  timeSaved: string;
+  desc: string;
+}
+
+export const INDUSTRY_CASES: IndustryCase[] = [
   {
     industry: 'Clínicas y Odontología',
+    tagline: 'Para centros médicos, doctores y especialistas de la salud.',
     leadIncrease: '+320%',
     timeSaved: '18 hrs/sem',
     desc: 'Respuestas automáticas a dudas sobre citas, confirmación por WhatsApp y recordatorio para reducir ausentismos a menos del 4%.'
   },
   {
     industry: 'Restaurantes y Gastronomía',
+    tagline: 'Para negocios gastronómicos, cafeterías y experiencias culinarias.',
     leadIncrease: '+210%',
     timeSaved: '25 hrs/sem',
     desc: 'Menú interactivo con pedidos directos, reserva de mesas sincronizada con Google Calendar y captación de reseñas de 5 estrellas.'
   },
   {
-    industry: 'Abogados y Consultores',
+    industry: 'Consultores e Independientes',
+    tagline: 'Para profesionales que quieren atraer clientes, gestionar citas y automatizar su seguimiento.',
     leadIncrease: '+185%',
     timeSaved: '14 hrs/sem',
-    desc: 'Pre-calificación rigurosa de prospectos con IA antes de agendar una llamada con los socios senior del bufete.'
+    desc: 'Pre-calificación inteligente de prospectos con IA antes de agendar una llamada estratégica o asesoría en tu calendario personal.'
   },
   {
     industry: 'Gimnasios y Centros Fitness',
+    tagline: 'Para entrenadores personales, boxes de crossfit y centros deportivos.',
     leadIncrease: '+410%',
     timeSaved: '22 hrs/sem',
     desc: 'Venta de membresías y agendamiento de clases de prueba gratuitas 24/7 sin personal extra en recepción.'

@@ -509,6 +509,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   >
                     <option value="Salud / Clínica">Salud / Odontología / Estética</option>
                     <option value="Restaurantes / Gastronomía">Restaurantes / Gastronomía</option>
+                    <option value="Consultores e Independientes">Consultores e Independientes</option>
                     <option value="Legal / Estudio Jurídico">Legal / Abogados / Contabilidad</option>
                     <option value="Inmobiliario / Real Estate">Inmobiliario / Bienes Raíces</option>
                     <option value="Fitness / Bienestar">Fitness / Centros Deportivos</option>

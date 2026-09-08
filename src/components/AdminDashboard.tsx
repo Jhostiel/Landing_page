@@ -32,7 +32,8 @@ import {
   Layers,
   Sparkles,
   Lock,
-  Eye
+  Eye,
+  FileText
 } from 'lucide-react';
 import {
   AgencySiteConfig,
@@ -54,6 +55,7 @@ import {
 import { sendGmailMessage, sendChatMessage, createCalendarEvent } from '../workspace';
 import { InfinityLogo } from './InfinityLogo';
 import { SERVICES_LIST, PRICING_PLANS } from '../data';
+import { ProposalsManager } from './ProposalsManager';
 
 interface AdminDashboardProps {
   onBackToWebsite: () => void;
@@ -74,8 +76,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [authError, setAuthError] = useState('');
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'hours' | 'bookings' | 'calendar' | 'notifications' | 'content' | 'workspace'>('hours');
+  const [activeTab, setActiveTab] = useState<'hours' | 'bookings' | 'calendar' | 'notifications' | 'content' | 'workspace' | 'proposals'>('hours');
   const [calendarViewMode, setCalendarViewMode] = useState<'WEEK' | 'MONTH' | 'AGENDA'>('WEEK');
+  const [selectedLeadForProposal, setSelectedLeadForProposal] = useState<LeadData | null>(null);
 
   // Configuration State
   const [config, setConfig] = useState<AgencySiteConfig>(() => loadAgencyConfig());
@@ -891,6 +894,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             ) : null}
           </button>
+
+          <button
+            onClick={() => setActiveTab('proposals')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+              activeTab === 'proposals'
+                ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20'
+                : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/30'
+            }`}
+          >
+            <Download size={16} />
+            Fichas & Dossier PDF
+            <span className="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-500/40">
+              Ventas
+            </span>
+          </button>
         </div>
 
         {/* TAB 1: HORARIOS DE ATENCIÓN */}
@@ -1381,6 +1399,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                             <td className="p-3.5 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end gap-1.5">
+                                {/* Create/Open Proposal PDF */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedLeadForProposal(lead);
+                                    setActiveTab('proposals');
+                                  }}
+                                  title="Crear o personalizar Ficha Técnica y Propuesta PDF para este cliente"
+                                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 transition-all shadow-sm shadow-emerald-950/40 cursor-pointer"
+                                >
+                                  <FileText size={13} className="text-emerald-400" />
+                                  <span>Propuesta PDF</span>
+                                </button>
+
                                 {/* Preview HTML email */}
                                 <a
                                   href={`/api/preview-email/${lead.id}`}
@@ -1751,6 +1782,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <span>WhatsApp</span>
                             </a>
                           )}
+
+                          <button
+                            onClick={() => {
+                              setSelectedLeadForProposal(lead);
+                              setActiveTab('proposals');
+                            }}
+                            title="Generar Ficha Técnica y Propuesta PDF para este cliente"
+                            className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          >
+                            <FileText size={13} className="text-emerald-400" />
+                            <span>Propuesta PDF</span>
+                          </button>
                         </div>
                       </div>
                     );
@@ -2441,6 +2484,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
           </div>
+        )}
+
+        {/* TAB 7: FICHAS TÉCNICAS & PROPUESTAS COMERCIALES EN PDF */}
+        {activeTab === 'proposals' && (
+          <ProposalsManager
+            agencyConfig={config}
+            initialLead={selectedLeadForProposal}
+            onClearInitialLead={() => setSelectedLeadForProposal(null)}
+          />
         )}
       </div>
 
