@@ -4,9 +4,9 @@ export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
   "agencyName": "Infinity Impact Agency",
   "headline": "Automatizamos el Crecimiento de tu Negocio con Inteligencia Artificial",
   "subheadline": "Agentes inteligentes para WhatsApp, captación automatizada de clientes de alto valor y páginas web de alta conversión.",
-  "whatsappNumber": "+56 9 8765 4321",
+  "whatsappNumber": "+573106922638",
   "contactEmail": "infinityimpactagency@gmail.com",
-  "supportHoursText": "Lunes a Viernes 09:00 a 19:00 hrs | Sábados 10:00 a 14:00 hrs",
+  "supportHoursText": "Lunes a Viernes 08:00 a 16:00 hrs | Sábados 10:00 a 14:00 hrs",
   "hoursConfig": {
     "days": [
       {
@@ -68,7 +68,7 @@ export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
   },
   "notifications": {
     "adminEmail": "infinityimpactagency@gmail.com",
-    "adminPhone": "+56 9 8765 4321",
+    "adminPhone": "+573106922638",
     "notifyAdminOnBooking": true,
     "notifySoundEnabled": true,
     "sendClientConfirmationEmail": true,
@@ -80,20 +80,30 @@ export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
     "googleCalendarEmbedUrl": "https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota"
   },
   "stats": {
-    "activeClients": "45+",
-    "leadsDelivered": "180,000+",
-    "satisfactionRate": "99.4%",
-    "hoursSaved": "3,200 hrs"
+    "activeClients": "17+",
+    "leadsDelivered": "20,000+",
+    "satisfactionRate": "98.4%",
+    "hoursSaved": "2,200 hrs"
   }
 };
 
 const STORAGE_KEY = 'infinity_agency_site_config';
 const NOTIFICATIONS_KEY = 'infinity_admin_notifications';
+const CONFIG_VERSION_KEY = 'infinity_config_version';
+const CURRENT_CONFIG_VERSION = '2026.09.09.v3';
 
 export function loadAgencyConfig(): AgencySiteConfig {
   try {
+    const savedVersion = localStorage.getItem(CONFIG_VERSION_KEY);
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_AGENCY_CONFIG;
+    
+    // Invalidate stale localStorage if code was deployed with a new default version
+    if (!savedVersion || savedVersion !== CURRENT_CONFIG_VERSION || !raw) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_AGENCY_CONFIG));
+      localStorage.setItem(CONFIG_VERSION_KEY, CURRENT_CONFIG_VERSION);
+      return DEFAULT_AGENCY_CONFIG;
+    }
+
     const parsed = JSON.parse(raw);
     return {
       ...DEFAULT_AGENCY_CONFIG,
@@ -120,6 +130,7 @@ export function loadAgencyConfig(): AgencySiteConfig {
 export function saveAgencyConfig(config: AgencySiteConfig): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(CONFIG_VERSION_KEY, CURRENT_CONFIG_VERSION);
   } catch (e) {
     console.error('Error saving config:', e);
   }

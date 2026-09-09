@@ -2,9 +2,9 @@
   "agencyName": "Infinity Impact Agency",
   "headline": "Automatizamos el Crecimiento de tu Negocio con Inteligencia Artificial",
   "subheadline": "Agentes inteligentes para WhatsApp, captación automatizada de clientes de alto valor y páginas web de alta conversión.",
-  "whatsappNumber": "+56 9 8765 4321",
+  "whatsappNumber": "+573106922638",
   "contactEmail": "infinityimpactagency@gmail.com",
-  "supportHoursText": "Lunes a Viernes 09:00 a 19:00 hrs | Sábados 10:00 a 14:00 hrs",
+  "supportHoursText": "Lunes a Viernes 08:00 a 16:00 hrs | Sábados 10:00 a 14:00 hrs",
   "hoursConfig": {
     "days": [
       {
@@ -66,7 +66,7 @@
   },
   "notifications": {
     "adminEmail": "infinityimpactagency@gmail.com",
-    "adminPhone": "+56 9 8765 4321",
+    "adminPhone": "+573106922638",
     "notifyAdminOnBooking": true,
     "notifySoundEnabled": true,
     "sendClientConfirmationEmail": true,
@@ -78,9 +78,9 @@
     "googleCalendarEmbedUrl": "https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota"
   },
   "stats": {
-    "activeClients": "45+",
-    "leadsDelivered": "180,000+",
-    "satisfactionRate": "99.4%",
-    "hoursSaved": "3,200 hrs"
+    "activeClients": "17+",
+    "leadsDelivered": "20,000+",
+    "satisfactionRate": "98.4%",
+    "hoursSaved": "2,200 hrs"
   }
 }
