@@ -53,18 +53,19 @@ export const ProposalsManager: React.FC<ProposalsManagerProps> = ({ agencyConfig
 
   // Helper to find the best matching spec based on client interest string
   const findMatchingSpecId = (interest?: string): string => {
-    if (!interest) return 'spec-whatsapp-ia';
+    if (!interest) return 'spec-dossier-plataforma-integral';
     const lower = interest.toLowerCase();
+    if (lower.includes('dossier') || lower.includes('plataforma') || lower.includes('integral')) return 'spec-dossier-plataforma-integral';
     if (lower.includes('plan 01') || lower.includes('start')) return 'spec-plan-start';
     if (lower.includes('plan 02') || lower.includes('plan ai') || lower.includes('infinity ai')) return 'spec-plan-ai';
     if (lower.includes('plan 03') || lower.includes('growth')) return 'spec-plan-growth';
     if (lower.includes('plan 04') || lower.includes('360')) return 'spec-plan-360';
-    if (lower.includes('web') || lower.includes('landing') || lower.includes('página')) return 'spec-web-conversion';
+    if (lower.includes('web') || lower.includes('landing') || lower.includes('página')) return 'spec-dossier-plataforma-integral';
     if (lower.includes('prospecci') || lower.includes('leads') || lower.includes('cold') || lower.includes('b2b')) return 'spec-leads-ia';
     if (lower.includes('crm') || lower.includes('pipeline') || lower.includes('seguimiento')) return 'spec-crm-whatsapp';
     if (lower.includes('maps') || lower.includes('seo') || lower.includes('reseñ') || lower.includes('local')) return 'spec-seo-local';
     if (lower.includes('menú') || lower.includes('menu') || lower.includes('pedido') || lower.includes('restaurante') || lower.includes('qr')) return 'spec-menus-pedidos';
-    return 'spec-whatsapp-ia';
+    return 'spec-dossier-plataforma-integral';
   };
 
   // Selected spec for editing or generating document
@@ -72,7 +73,7 @@ export const ProposalsManager: React.FC<ProposalsManagerProps> = ({ agencyConfig
     if (initialLead) {
       return findMatchingSpecId(initialLead.serviceInterest);
     }
-    return 'spec-whatsapp-ia';
+    return 'spec-dossier-plataforma-integral';
   });
   const [filterType, setFilterType] = useState<'all' | 'service' | 'plan'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -304,6 +305,52 @@ export const ProposalsManager: React.FC<ProposalsManagerProps> = ({ agencyConfig
             <span>{saveAlert}</span>
           </div>
         )}
+      </div>
+
+      {/* DOSSIER DESTACADO BANNER */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900 to-cyan-950/60 border border-emerald-500/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg shadow-emerald-950/20">
+        <div className="flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+            <FileText size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                Documento Listo para Clientes
+              </span>
+              <span className="text-xs font-semibold text-cyan-400">PDF Oficial 3 Páginas</span>
+            </div>
+            <h3 className="text-sm sm:text-base font-bold text-white mt-1">
+              Dossier de Servicio: Plataforma Web Integral (Landing + Reservas + CRM)
+            </h3>
+            <p className="text-xs text-slate-400 max-w-xl mt-0.5">
+              Material comercial completo con los 4 pilares, tabla comparativa, entregables y propuesta de valor para entregar a prospectos interesados.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-stretch md:self-auto shrink-0">
+          <button
+            onClick={() => {
+              setSelectedSpecId('spec-dossier-plataforma-integral');
+              setViewMode('preview');
+            }}
+            className="flex-1 md:flex-initial px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <Eye size={14} className="text-cyan-400" />
+            <span>Ver Dossier</span>
+          </button>
+          <button
+            onClick={() => {
+              const dossierSpec = specs.find((s) => s.id === 'spec-dossier-plataforma-integral') || specs[0];
+              generateDirectPDF(dossierSpec, proposalConfig);
+            }}
+            className="flex-1 md:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+          >
+            <Download size={14} />
+            <span>Descargar PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* FILTER AND SELECTOR BAR */}
@@ -772,96 +819,300 @@ export const ProposalsManager: React.FC<ProposalsManagerProps> = ({ agencyConfig
                     </p>
                   </div>
 
-                  {/* VALUE PROP & PROBLEM SOLVED */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-xl bg-[#0f1422] border border-slate-800 print:bg-slate-50 print:border-slate-300">
-                      <h4 className="font-bold text-slate-200 print:text-slate-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                        <Zap size={14} className="text-amber-400" />
-                        Propuesta de Valor & Solución
-                      </h4>
-                      <p className="text-slate-300 print:text-slate-700 leading-relaxed">
-                        {currentSpec.valueProposition}
-                      </p>
-                    </div>
+                  {/* DOSSIER OR STANDARD SPEC DETAILS */}
+                  {currentSpec.isDossier || (currentSpec.pillars && currentSpec.pillars.length > 0) ? (
+                    /* DOSSIER FULL ON-SCREEN PREVIEW */
+                    <div className="space-y-6">
+                      {/* Overview Callout */}
+                      <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 print:bg-emerald-50 print:border-emerald-300 text-xs">
+                        <div className="flex items-center gap-2 font-bold text-emerald-300 print:text-emerald-800 uppercase tracking-wider mb-2">
+                          <Sparkles size={14} className="text-emerald-400" />
+                          📌 ¿QUÉ ES ESTA SOLUCIÓN?
+                        </div>
+                        <p className="text-slate-200 print:text-slate-800 leading-relaxed font-medium">
+                          {currentSpec.solutionOverview || currentSpec.valueProposition}
+                        </p>
+                      </div>
 
-                    <div className="p-4 rounded-xl bg-[#0f1422] border border-slate-800 print:bg-slate-50 print:border-slate-300">
-                      <h4 className="font-bold text-slate-200 print:text-slate-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                        <ShieldCheck size={14} className="text-cyan-400" />
-                        El Problema Comercial que Resuelve
-                      </h4>
-                      <p className="text-slate-300 print:text-slate-700 leading-relaxed">
-                        {currentSpec.problemSolved}
-                      </p>
-                    </div>
-                  </div>
+                      {/* 4 Pillars */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-white print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <Zap size={16} className="text-cyan-400 print:text-blue-700" />
+                          💎 LOS 4 PILARES QUE TRANSFORMAN TU NEGOCIO:
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {currentSpec.pillars?.map((p) => (
+                            <div
+                              key={p.number}
+                              className="p-4 rounded-xl bg-[#0f1422] border border-slate-800 border-l-4 border-l-emerald-500 print:bg-white print:border-slate-300 print:border-l-emerald-600 text-xs space-y-2.5 shadow-sm"
+                            >
+                              <div className="font-bold text-white print:text-slate-900 text-sm font-['Outfit']">
+                                {p.number}. {p.title}{' '}
+                                <span className="text-slate-400 print:text-slate-600 text-xs font-normal">
+                                  ({p.subtitle})
+                                </span>
+                              </div>
+                              <div className="space-y-2">
+                                {p.points.map((pt, pIdx) => (
+                                  <div key={pIdx} className="flex items-start gap-2 text-slate-300 print:text-slate-700">
+                                    <span className="text-emerald-400 print:text-emerald-700 font-bold shrink-0">•</span>
+                                    <span>
+                                      {pt.label && (
+                                        <strong className="text-slate-100 print:text-slate-900">
+                                          {pt.label}:{' '}
+                                        </strong>
+                                      )}
+                                      {pt.text}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
-                  {/* TECHNICAL ARCHITECTURE */}
-                  <div className="p-4 rounded-xl bg-[#0c111a] border border-slate-800 print:bg-slate-100 print:border-slate-300 text-xs space-y-1">
-                    <span className="font-bold text-cyan-400 print:text-blue-700 uppercase tracking-wider block">
-                      ⚙️ Arquitectura e Infraestructura Tecnológica Empleada:
-                    </span>
-                    <p className="text-slate-300 print:text-slate-800 leading-relaxed">
-                      {currentSpec.technicalArchitecture}
-                    </p>
-                  </div>
-
-                  {/* DELIVERABLES LIST */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-white print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                      <CheckCircle2 size={16} className="text-emerald-400 print:text-emerald-700" />
-                      Entregables Concretos de la Solución (Alcance Total):
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {currentSpec.deliverables.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-2.5 p-3 rounded-xl bg-[#0f1422] border border-slate-800/80 print:bg-white print:border-slate-300 text-xs"
-                        >
-                          <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 print:bg-emerald-100 print:text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
-                            ✓
+                      {/* Comparison Table */}
+                      {currentSpec.comparisonTable && currentSpec.comparisonTable.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-bold text-white print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                            <Layers size={16} className="text-cyan-400 print:text-blue-700" />
+                            📊 COMPARATIVA: WEB TRADICIONAL VS. NUESTRA PLATAFORMA
+                          </h4>
+                          <div className="overflow-x-auto rounded-xl border border-slate-800 print:border-slate-300">
+                            <table className="w-full text-xs text-left border-collapse">
+                              <thead>
+                                <tr className="bg-[#0c111a] print:bg-slate-100 text-slate-300 print:text-slate-800 border-b border-slate-800 print:border-slate-300">
+                                  <th className="p-3 font-bold uppercase text-[11px]">Característica Clave</th>
+                                  <th className="p-3 font-bold uppercase text-[11px] text-slate-400 print:text-slate-600">
+                                    Sitio Web Convencional
+                                  </th>
+                                  <th className="p-3 font-bold uppercase text-[11px] text-emerald-400 print:text-emerald-700">
+                                    Nuestra Plataforma Integral
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/60 print:divide-slate-200">
+                                {currentSpec.comparisonTable.map((row, rIdx) => (
+                                  <tr
+                                    key={rIdx}
+                                    className={
+                                      rIdx % 2 === 0
+                                        ? 'bg-[#0f1422]/60 print:bg-white'
+                                        : 'bg-[#0a0f19] print:bg-slate-50'
+                                    }
+                                  >
+                                    <td className="p-3 font-semibold text-white print:text-slate-900">{row.feature}</td>
+                                    <td className="p-3 text-slate-400 print:text-slate-600">{row.traditional}</td>
+                                    <td className="p-3 text-emerald-300 print:text-emerald-700 font-semibold">
+                                      ✓ {row.integral}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
-                          <span className="text-slate-200 print:text-slate-800 font-medium leading-relaxed">
-                            {item}
+                        </div>
+                      )}
+
+                      {/* Ideal For */}
+                      {currentSpec.idealFor && currentSpec.idealFor.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-bold text-white print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                            <ShieldCheck size={16} className="text-cyan-400 print:text-blue-700" />
+                            🎯 ¿PARA QUIÉN ES IDEAL ESTA SOLUCIÓN?
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {currentSpec.idealFor.map((item, iIdx) => (
+                              <div
+                                key={iIdx}
+                                className="p-3.5 rounded-xl bg-[#0f1422] border border-slate-800 print:bg-slate-50 print:border-slate-300 text-xs"
+                              >
+                                <div className="font-bold text-cyan-300 print:text-blue-700 mb-1">
+                                  {item.audience}
+                                </div>
+                                <p className="text-slate-400 print:text-slate-600 leading-relaxed">{item.reason}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Deliverables */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-white print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-400 print:text-emerald-700" />
+                          📦 ENTREGABLES DEL PROYECTO (ALCANCE COMPLETO):
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {currentSpec.deliverables.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-2.5 p-3 rounded-xl bg-[#0f1422] border border-slate-800 print:bg-white print:border-slate-300 text-xs"
+                            >
+                              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 print:bg-emerald-100 print:text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
+                                ✓
+                              </div>
+                              <span className="text-slate-200 print:text-slate-800 font-medium leading-relaxed">
+                                {item}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Metrics */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
+                            Retorno de Inversión (ROI)
+                          </span>
+                          <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
+                            {currentSpec.businessROI}
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
+                            Plazo Estimado de Entrega
+                          </span>
+                          <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
+                            {currentSpec.timelineWeeks}
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
+                            Soporte & Garantía
+                          </span>
+                          <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
+                            {currentSpec.supportWarranty}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Call to action card */}
+                      <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 to-[#0c1724] border border-cyan-500/40 print:bg-slate-100 print:border-slate-300 text-xs">
+                        <div className="text-sm font-bold text-emerald-400 print:text-emerald-800 mb-1 font-['Outfit']">
+                          🚀 ¿Listo para automatizar la captación de tus clientes?
+                        </div>
+                        <p className="text-slate-300 print:text-slate-700 mb-3">
+                          Hablemos hoy para planificar la estructura y puesta en marcha de tu nueva plataforma.
+                        </p>
+                        <div className="flex flex-wrap gap-4 text-slate-400 print:text-slate-600 text-[11px]">
+                          <span>
+                            📱 WhatsApp:{' '}
+                            <strong className="text-white print:text-slate-900">
+                              {proposalConfig.agencyPhone}
+                            </strong>
+                          </span>
+                          <span>
+                            ✉️ Correo:{' '}
+                            <strong className="text-white print:text-slate-900">
+                              {proposalConfig.agencyEmail}
+                            </strong>
+                          </span>
+                          <span>
+                            🌐 Web:{' '}
+                            <strong className="text-white print:text-slate-900">
+                              {proposalConfig.agencyWebsite}
+                            </strong>
                           </span>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* VALUE PROP & PROBLEM SOLVED */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="p-4 rounded-xl bg-[#0f1422] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <h4 className="font-bold text-slate-200 print:text-slate-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <Zap size={14} className="text-amber-400" />
+                            Propuesta de Valor & Solución
+                          </h4>
+                          <p className="text-slate-300 print:text-slate-700 leading-relaxed">
+                            {currentSpec.valueProposition}
+                          </p>
+                        </div>
 
-                  {/* METRICS & TERMS GRID */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                    <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
-                      <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
-                        Retorno de Inversión (ROI)
-                      </span>
-                      <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
-                        {currentSpec.businessROI}
-                      </p>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
-                      <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
-                        Plazo Estimado de Entrega
-                      </span>
-                      <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
-                        {currentSpec.timelineWeeks}
-                      </p>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
-                      <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
-                        Soporte & Garantía
-                      </span>
-                      <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
-                        {currentSpec.supportWarranty}
-                      </p>
-                    </div>
-                  </div>
+                        <div className="p-4 rounded-xl bg-[#0f1422] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <h4 className="font-bold text-slate-200 print:text-slate-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                            <ShieldCheck size={14} className="text-cyan-400" />
+                            El Problema Comercial que Resuelve
+                          </h4>
+                          <p className="text-slate-300 print:text-slate-700 leading-relaxed">
+                            {currentSpec.problemSolved}
+                          </p>
+                        </div>
+                      </div>
 
-                  {/* EXCLUSIONS */}
-                  {currentSpec.exclusions.length > 0 && (
-                    <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 print:bg-slate-50 print:border-slate-300 text-[11px] text-slate-400 print:text-slate-600">
-                      <span className="font-bold text-slate-300 print:text-slate-700">Límites y Exclusiones Claras: </span>
-                      {currentSpec.exclusions.join(' • ')}
-                    </div>
+                      {/* TECHNICAL ARCHITECTURE */}
+                      <div className="p-4 rounded-xl bg-[#0c111a] border border-slate-800 print:bg-slate-100 print:border-slate-300 text-xs space-y-1">
+                        <span className="font-bold text-cyan-400 print:text-blue-700 uppercase tracking-wider block">
+                          ⚙️ Arquitectura e Infraestructura Tecnológica Empleada:
+                        </span>
+                        <p className="text-slate-300 print:text-slate-800 leading-relaxed">
+                          {currentSpec.technicalArchitecture}
+                        </p>
+                      </div>
+
+                      {/* DELIVERABLES LIST */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-white print:text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-400 print:text-emerald-700" />
+                          Entregables Concretos de la Solución (Alcance Total):
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {currentSpec.deliverables.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-2.5 p-3 rounded-xl bg-[#0f1422] border border-slate-800/80 print:bg-white print:border-slate-300 text-xs"
+                            >
+                              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 print:bg-emerald-100 print:text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
+                                ✓
+                              </div>
+                              <span className="text-slate-200 print:text-slate-800 font-medium leading-relaxed">
+                                {item}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* METRICS & TERMS GRID */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                        <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
+                            Retorno de Inversión (ROI)
+                          </span>
+                          <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
+                            {currentSpec.businessROI}
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
+                            Plazo Estimado de Entrega
+                          </span>
+                          <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
+                            {currentSpec.timelineWeeks}
+                          </p>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-[#0e131f] border border-slate-800 print:bg-slate-50 print:border-slate-300">
+                          <span className="text-[10px] font-bold text-slate-400 print:text-slate-600 uppercase block">
+                            Soporte & Garantía
+                          </span>
+                          <p className="text-slate-200 print:text-slate-900 font-semibold mt-1">
+                            {currentSpec.supportWarranty}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* EXCLUSIONS */}
+                      {currentSpec.exclusions.length > 0 && (
+                        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 print:bg-slate-50 print:border-slate-300 text-[11px] text-slate-400 print:text-slate-600">
+                          <span className="font-bold text-slate-300 print:text-slate-700">Límites y Exclusiones Claras: </span>
+                          {currentSpec.exclusions.join(' • ')}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* CUSTOM TERMS */}

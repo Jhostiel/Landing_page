@@ -14,6 +14,25 @@ export interface SpecItem {
   timelineWeeks: string;
   supportWarranty: string;
   exclusions: string[];
+  // Extended Dossier fields
+  isDossier?: boolean;
+  solutionOverview?: string;
+  pillars?: {
+    number: number;
+    title: string;
+    subtitle: string;
+    points: { label?: string; text: string }[];
+  }[];
+  comparisonTable?: {
+    feature: string;
+    traditional: string;
+    integral: string;
+  }[];
+  idealFor?: {
+    audience: string;
+    reason: string;
+  }[];
+  callToActionText?: string;
 }
 
 export interface ProposalDocumentConfig {
@@ -31,7 +50,164 @@ export interface ProposalDocumentConfig {
   agencyWebsite: string;
 }
 
+export const DEFAULT_PROPOSAL_CONFIG: ProposalDocumentConfig = {
+  clientName: 'Cliente Corporativo',
+  clientCompany: 'Empresa / Negocio Comercial',
+  clientEmail: 'contacto@cliente.com',
+  clientPhone: '+54 9 11 0000-0000',
+  proposalCode: 'INF-2026-DOSSIER',
+  validUntil: '30 días desde la emisión',
+  preparedBy: 'Dirección Comercial • Infinity Impact Agency',
+  selectedItems: [],
+  customTerms: 'Forma de pago: 50% al inicio y 50% al completar y validar la entrega técnica. Incluye garantía de satisfacción de 30 días y soporte técnico continuo.',
+  agencyPhone: '+54 9 11 0000-0000',
+  agencyEmail: 'contacto@infinityimpactagency.com',
+  agencyWebsite: 'www.infinityimpactagency.com'
+};
+
+// 🚀 DOSSIER DE SERVICIO Y PROPUESTA DE VALOR OFICIAL
+export const DOSSIER_PLATAFORMA_INTEGRAL: SpecItem = {
+  id: 'spec-dossier-plataforma-integral',
+  type: 'service',
+  title: 'Plataforma Web Integral de Crecimiento Comercial',
+  subtitle: 'Landing Page de Alta Conversión + Sistema Automatizado de Reservas + CRM Interno',
+  badge: '🚀 Dossier Oficial de Servicio',
+  priceTag: 'Infraestructura Completa',
+  isDossier: true,
+  solutionOverview: 'No es una "página web tradicional informativa". Es una infraestructura digital completa para captura y cierre de clientes, diseñada para transformar visitas anónimas en citas calificadas y ventas directas en tu calendario, operando las 24 horas del día sin intervención manual.',
+  valueProposition: 'Infraestructura digital completa para captura y cierre de clientes: transforma visitas anónimas en citas calificadas y ventas directas en tu calendario, operando 24/7 sin fricción manual.',
+  targetAudience: 'Agencias, consultoras, profesionales independientes (médicos, abogados, contadores, coaches) y empresas de servicios B2B/B2C que cualifican antes de cotizar.',
+  problemSolved: 'Páginas web tradicionales estáticas que no generan ventas, formularios olvidados, el desgaste de coordinar reuniones manualmente por mensajes y prospectos perdidos por falta de un CRM unificado.',
+  technicalArchitecture: 'Stack moderno de alto rendimiento (React + TypeScript + Tailwind CSS), sincronización en tiempo real con Google Calendar/Meet, invitaciones (.ics) y panel privado con Mini-CRM protegido.',
+  pillars: [
+    {
+      number: 1,
+      title: 'Landing Page de Alta Conversión',
+      subtitle: 'Tu Mejor Vendedor 24/7',
+      points: [
+        {
+          label: 'Arquitectura Orientada a Ventas',
+          text: 'Cada sección, titular y botón está colocado con psicología de conversión para guiar al usuario directo a agendar o comprar.'
+        },
+        {
+          label: 'Diseño Premium & Responsive',
+          text: 'Imagen de marca corporativa, moderna y de autoridad, adaptada al 100% para celulares, tablets y computadores.'
+        },
+        {
+          label: 'Micro-interacciones y Animaciones Táctiles',
+          text: 'Experiencia fluida donde cada toque o clic ofrece retroalimentación visual instantánea, aumentando el tiempo de permanencia y la retención del cliente.'
+        },
+        {
+          label: 'Carga Ultrarrápida',
+          text: 'Construida con tecnología moderna (React + Tailwind) para que tus clientes no abandonen la web por lentitud.'
+        }
+      ]
+    },
+    {
+      number: 2,
+      title: 'Sistema Inteligente de Agendamiento y Calificación',
+      subtitle: 'Captura y Filtro Automatizado',
+      points: [
+        {
+          label: 'Autonomía Total para el Cliente',
+          text: 'Tu prospecto elige el día y la hora exacta según tu disponibilidad real en tiempo real, eliminando el desgastante intercambio de mensajes ("¿a qué hora puedes?").'
+        },
+        {
+          label: 'Filtro Cualificador de Prospectos',
+          text: 'Antes de reservar, el sistema recopila nombre, empresa, WhatsApp, correo y presupuesto o servicio deseado, para que llegues a cada reunión sabiendo exactamente qué ofrecer.'
+        },
+        {
+          label: 'Confirmación Instantánea Multicanal',
+          text: 'Al cliente se le entrega su sala virtual de reunión (Google Meet), enlace directo para añadir la cita a su Google Calendar en 1 clic y descarga automática de invitación (.ics) compatible con iPhone / Outlook.'
+        }
+      ]
+    },
+    {
+      number: 3,
+      title: 'Sincronización Automática con Google Workspace & Calendar',
+      subtitle: 'Cero Fricción y Máxima Asistencia',
+      points: [
+        {
+          label: 'Cero Citas Duplicadas',
+          text: 'Las reuniones se sincronizan de inmediato con tu Google Calendar corporativo en tu zona horaria local.'
+        },
+        {
+          label: 'Recordatorios y Notificaciones por Correo',
+          text: 'El cliente recibe un correo institucional de confirmación con toda la información de la sesión; tu equipo recibe una alerta inmediata en su bandeja con el WhatsApp del cliente listo para contactar.'
+        },
+        {
+          label: 'Reducción Drástica de Inasistencias (No-Shows)',
+          text: 'Al anclarse directamente en la agenda del cliente, tus tasas de asistencia aumentan notablemente.'
+        }
+      ]
+    },
+    {
+      number: 4,
+      title: 'Panel de Administración y Mini-CRM Privado',
+      subtitle: 'Control Total en tus Manos',
+      points: [
+        {
+          label: 'Control Total en tus Manos',
+          text: 'Una plataforma interna exclusiva para ti y tu equipo, protegida por acceso seguro.'
+        },
+        {
+          label: 'Pipeline de Prospectos (CRM)',
+          text: 'Visualiza en una sola pantalla a todos los clientes que han solicitado información o reservado, con estados (Nuevo, Confirmado, Contactado, Cerrado).'
+        },
+        {
+          label: 'Gestor de Horarios y Reglas de Negocio',
+          text: 'Define tus días de atención, horarios de trabajo, duración de reuniones y márgenes de descanso sin tocar código.'
+        },
+        {
+          label: 'CMS de Contenido en Vivo',
+          text: 'Cambia precios, modifica servicios o actualiza tu número de WhatsApp desde el panel cuando lo necesites, sin pagarle a un programador por cada cambio menor.'
+        }
+      ]
+    }
+  ],
+  comparisonTable: [
+    { feature: 'Objetivo Principal', traditional: 'Solo informar', integral: 'Generar reservas y ventas' },
+    { feature: 'Agendamiento', traditional: 'Formularios que nadie responde', integral: 'Reserva interactiva en tiempo real' },
+    { feature: 'Sincronización', traditional: 'Manual (copiar y pegar)', integral: 'Google Calendar automático' },
+    { feature: 'Notificaciones', traditional: 'A veces llegan a spam', integral: 'Emails estructurados + acceso Meet' },
+    { feature: 'Gestión de Leads', traditional: 'Hojas de cálculo sueltas', integral: 'CRM integrado en la misma plataforma' },
+    { feature: 'Modificación de Textos', traditional: 'Dependes de un diseñador', integral: 'Panel propio para editar precios y textos' }
+  ],
+  idealFor: [
+    {
+      audience: 'Agencias y Consultoras',
+      reason: 'Para agendar llamadas de descubrimiento y consultorías estratégicas.'
+    },
+    {
+      audience: 'Profesionales Independientes y Expertos',
+      reason: 'Abogados, médicos, coaches, contadores y asesores financieros.'
+    },
+    {
+      audience: 'Empresas de Servicios B2B y B2C',
+      reason: 'Negocios que necesitan cualificar antes de cotizar y cerrar contratos de alto valor.'
+    }
+  ],
+  deliverables: [
+    'Despliegue y Puesta en Marcha: Configuración de dominio, servidores seguros en la nube y certificado SSL (https://).',
+    'Personalización Integral de Marca: Paleta de colores, logotipo, tipografías y propuesta de valor de tu negocio.',
+    'Automatización de Notificaciones: Conexión de tu cuenta de correo y Google Calendar corporativo.',
+    'Acceso al Panel Administrativo: Credenciales de seguridad y configuración del CRM interno.',
+    'Garantía y Acompañamiento: Soporte técnico y capacitación breve para que tú o tu equipo administren la plataforma sin fricciones.'
+  ],
+  businessROI: 'Multiplica la conversión de visitantes anónimos en citas de venta y ahorra hasta 15 horas semanales de gestión manual de agendas.',
+  timelineWeeks: '7 a 14 días laborables para entrega completa y puesta en marcha',
+  supportWarranty: 'Garantía técnica de funcionamiento, backups automáticos y soporte continuo',
+  exclusions: [
+    'Presupuesto publicitario en plataformas de pago (Meta Ads o Google Ads)',
+    'Costos anuales de adquisición de dominio propio si el cliente requiere uno nuevo'
+  ],
+  callToActionText: '¿Listo para automatizar la captación de tus clientes? Hablemos hoy para planificar la estructura y puesta en marcha de tu nueva plataforma.'
+};
+
 export const DEFAULT_TECHNICAL_SPECS: SpecItem[] = [
+  // 0. Dossier Integral de Crecimiento Comercial (Destacado)
+  DOSSIER_PLATAFORMA_INTEGRAL,
+
   // 1. WhatsApp IA
   {
     id: 'spec-whatsapp-ia',

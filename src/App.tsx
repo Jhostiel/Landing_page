@@ -516,6 +516,14 @@ export default function App() {
             >
               Agenda una llamada
             </motion.button>
+
+            <button
+              onClick={navigateToAdmin}
+              title="Panel Administrativo & Propuestas (/admind)"
+              className="p-2 sm:p-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 border border-slate-700 transition-all cursor-pointer"
+            >
+              <Lock size={13} />
+            </button>
           </div>
         </div>
       </header>
