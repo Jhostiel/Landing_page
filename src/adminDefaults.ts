@@ -5,6 +5,7 @@ export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
   "headline": "Automatizamos el Crecimiento de tu Negocio con Inteligencia Artificial",
   "subheadline": "Agentes inteligentes para WhatsApp, captación automatizada de clientes de alto valor y páginas web de alta conversión.",
   "whatsappNumber": "+573106922638",
+  "whatsappDefaultMessage": "¡Hola! Me comunico desde su sitio web y me gustaría hablar con un asesor.",
   "contactEmail": "infinityimpactagency@gmail.com",
   "supportHoursText": "Lunes a Viernes 08:00 a 16:00 hrs | Sábados 10:00 a 14:00 hrs",
   "hoursConfig": {
@@ -90,7 +91,7 @@ export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
 const STORAGE_KEY = 'infinity_agency_site_config';
 const NOTIFICATIONS_KEY = 'infinity_admin_notifications';
 const CONFIG_VERSION_KEY = 'infinity_config_version';
-const CURRENT_CONFIG_VERSION = '2026.09.09.v3';
+const CURRENT_CONFIG_VERSION = '2026.09.09.v4';
 
 export function loadAgencyConfig(): AgencySiteConfig {
   try {

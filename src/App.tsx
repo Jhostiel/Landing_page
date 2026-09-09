@@ -516,7 +516,8 @@ export default function App() {
   }
 
   const cleanWhatsAppNumber = agencyConfig.whatsappNumber.replace(/[^0-9]/g, '');
-  const waContactLink = `https://wa.me/${cleanWhatsAppNumber}?text=${encodeURIComponent('Hola Infinity Impact Agency, deseo información sobre sus servicios de automatización con IA.')}`;
+  const waGreeting = agencyConfig.whatsappDefaultMessage || '¡Hola! Me comunico desde su sitio web y me gustaría hablar con un asesor.';
+  const waContactLink = `https://wa.me/${cleanWhatsAppNumber}?text=${encodeURIComponent(waGreeting)}`;
 
   return (
     <div className="min-h-screen bg-[#07090e] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] selection:bg-emerald-500/30 selection:text-emerald-300 relative">
@@ -1081,7 +1082,7 @@ export default function App() {
               className="px-7 py-3.5 rounded-full font-bold text-sm bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-black shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2 cursor-pointer touch-tap"
             >
               <MessageSquareText size={16} />
-              <span>Hablar por WhatsApp ({agencyConfig.whatsappNumber})</span>
+              <span>Hablar por WhatsApp</span>
             </motion.a>
           </div>
         </motion.div>

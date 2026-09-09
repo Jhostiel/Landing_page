@@ -2363,6 +2363,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Mensaje Automático de Saludo (WhatsApp)
+                    </label>
+                    <input
+                      type="text"
+                      value={config.whatsappDefaultMessage || ''}
+                      placeholder="¡Hola! Me comunico desde su sitio web y me gustaría hablar con un asesor."
+                      onChange={(e) => setConfig({ ...config, whatsappDefaultMessage: e.target.value })}
+                      className="w-full bg-[#141b29] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 placeholder-slate-500"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Mensaje inicial abierto que verá el visitante al hacer clic en el botón de WhatsApp.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Email de Soporte / Comercial
                     </label>
                     <input

@@ -56,6 +56,7 @@ export interface AgencySiteConfig {
   headline: string;
   subheadline: string;
   whatsappNumber: string;
+  whatsappDefaultMessage?: string;
   contactEmail: string;
   supportHoursText: string;
   hoursConfig: AgencyHoursConfig;
