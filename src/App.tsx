@@ -1058,16 +1058,6 @@ export default function App() {
               <MessageSquareText size={16} />
               <span>Hablar por WhatsApp ({agencyConfig.whatsappNumber})</span>
             </motion.a>
-
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.93 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-              onClick={() => handleOpenBooking('CTA Final')}
-              className="px-7 py-3.5 rounded-full font-semibold text-sm border border-slate-700 bg-slate-900/90 hover:bg-slate-800 text-white transition-all cursor-pointer touch-tap"
-            >
-              Agendar Llamada Estratégica
-            </motion.button>
           </div>
         </motion.div>
       </section>
