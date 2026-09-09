@@ -106,10 +106,34 @@ export interface PricingPlan {
   accentGradient?: string;
 }
 
+export interface CaseStudyMetric {
+  label: string;
+  value: string;
+  subtext?: string;
+}
+
 export interface TrustClient {
+  id: string;
   name: string;
   sub: string;
   icon: string;
+  industry: string;
+  tagline: string;
+  challenge: string;
+  solution: {
+    title: string;
+    description: string;
+    deliverables: string[];
+  };
+  metrics: CaseStudyMetric[];
+  testimonial?: {
+    quote: string;
+    author: string;
+    role: string;
+  };
+  serviceId?: string;
+  serviceTitle: string;
+  accentColor?: string;
 }
 
 export interface WorkspaceAuthState {

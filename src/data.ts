@@ -1,12 +1,198 @@
 import { ServiceItem, PricingPlan, TrustClient } from './types';
 
 export const TRUST_CLIENTS: TrustClient[] = [
-  { name: 'DENTAL CARE', sub: 'CLÍNICA ODONTOLÓGICA', icon: 'Smile' },
-  { name: 'BellaVista', sub: 'CLÍNICA MÉDICA', icon: 'HeartPulse' },
-  { name: 'Sabor & Fuego', sub: 'RESTAURANTE GOURMET', icon: 'Utensils' },
-  { name: 'Hotel Paraíso', sub: 'BOUTIQUE & SPA', icon: 'Building2' },
-  { name: 'FIT LIFE', sub: 'GYM & WELLNESS', icon: 'Dumbbell' },
-  { name: 'ESTUDIO JURÍDICO', sub: 'LEGAL ADVISORS', icon: 'Scale' },
+  {
+    id: 'case-dental-care',
+    name: 'DENTAL CARE',
+    sub: 'CLÍNICA ODONTOLÓGICA',
+    icon: 'Smile',
+    industry: 'Salud Dental & Odontología Especializada',
+    tagline: 'Agendamiento médico 24/7 y erradicación del ausentismo por olvido',
+    challenge: 'Perdían más del 40% de los pacientes que escribían por WhatsApp fuera del horario de recepción (noches y fines de semana). La secretaria dedicaba hasta 3 horas al día confirmando citas una por una por teléfono, y aún así sufrían un 25% de ausentismo.',
+    solution: {
+      title: 'Agente de IA para WhatsApp + Agenda Médica Bidireccional',
+      description: 'Implementamos un asistente conversacional calibrado con el catálogo de tratamientos, aranceles y seguros de la clínica, conectado en tiempo real con Google Calendar y con recordatorios automatizados.',
+      deliverables: [
+        'Agente conversacional en Meta WhatsApp API oficial con lenguaje empático',
+        'Sincronización de disponibilidad en tiempo real con Google Calendar',
+        'Recordatorio inteligente 24h y 2h antes con opción de confirmación o reprogramación con 1 clic',
+        'Panel de recepción con ficha médica preliminar de cada paciente'
+      ]
+    },
+    metrics: [
+      { label: 'Citas Mensuales', value: '+48%', subtext: 'Aumento neto de pacientes' },
+      { label: 'Tiempo de Respuesta', value: '< 4 seg', subtext: 'Disponibilidad 24/7' },
+      { label: 'Tasa de No-Show', value: '-82%', subtext: 'Reducción de ausentismo' }
+    ],
+    testimonial: {
+      quote: 'Ahora los pacientes agendan sus valoraciones y limpiezas incluso de madrugada. Nuestro equipo en recepción ya no vive esclavo del teléfono y se enfoca en atender con calidez en la sala de espera.',
+      author: 'Dra. Marcela Gómez',
+      role: 'Directora Médica & Socia Fundadora'
+    },
+    serviceId: 'whatsapp-ia',
+    serviceTitle: 'Agentes de IA para WhatsApp',
+    accentColor: 'cyan'
+  },
+  {
+    id: 'case-bellavista',
+    name: 'BellaVista',
+    sub: 'CLÍNICA MÉDICA & ESTÉTICA',
+    icon: 'HeartPulse',
+    industry: 'Medicina Estética & Cuidado Dermatológico',
+    tagline: 'Filtro cualificador de prospectos y triaje automatizado para consultas VIP',
+    challenge: 'Invertían fuertemente en publicidad en redes sociales pero colapsaban con cientos de mensajes preguntando "¿precio?" sin saber cuáles eran pacientes con presupuesto real, desgastando a las asesoras comerciales.',
+    solution: {
+      title: 'Embudo de Cualificación Inteligente & CRM de Citas Estéticas',
+      description: 'Construimos un flujo conversacional inteligente que realiza un pre-diagnóstico amigable, clasifica el interés por procedimiento (rinomodelación, toxina, aparatología) y solo deriva a agenda médica a prospectos cualificados.',
+      deliverables: [
+        'Triaje automatizado de procedimientos y expectativas del paciente',
+        'Presentación dinámica de portafolio y rangos de inversión aproximados',
+        'Cobro de abono de reserva integrado para asegurar la asistencia',
+        'Alertas inmediatas al equipo médico con ficha completa del caso'
+      ]
+    },
+    metrics: [
+      { label: 'Conversión a Consulta', value: '3.4x', subtext: 'De chat a pago de consulta' },
+      { label: 'Leads Cualificados', value: '100%', subtext: 'Cero tiempo perdido en curiosos' },
+      { label: 'Ahorro Administrativo', value: '+35 hrs', subtext: 'Ahorradas al mes por el equipo' }
+    ],
+    testimonial: {
+      quote: 'El agente de Infinity Impact hace el trabajo pesado de filtrado. Cuando un paciente llega a la consulta presencial, ya conoce los procedimientos, tiene el presupuesto claro y viene decidido a iniciar su tratamiento.',
+      author: 'Dr. Esteban Ríos',
+      role: 'Cirujano Estético'
+    },
+    serviceId: 'leads-ia',
+    serviceTitle: 'Generación de Leads & Cualificación IA',
+    accentColor: 'rose'
+  },
+  {
+    id: 'case-sabor-fuego',
+    name: 'Sabor & Fuego',
+    sub: 'RESTAURANTE GOURMET & ASADOR',
+    icon: 'Utensils',
+    industry: 'Gastronomía de Alta Gama & Experiencias Culinarias',
+    tagline: 'Menú QR interactivo, pedidos automáticos a cocina y reservas de mesa',
+    challenge: 'En horarios de máxima afluencia los comensales esperaban hasta 15 minutos solo para recibir la carta. Los pedidos a domicilio por WhatsApp llegaban en audios largos o notas incompletas, generando errores en comandas y retrasos.',
+    solution: {
+      title: 'Menú QR Ultraliviano + Bot de Pedidos Estructurados para WhatsApp',
+      description: 'Desarrollamos una Web-App ultraliviana accesible por QR en mesas que carga en menos de 1 segundo, junto a un bot que recepciona pedidos de delivery con desglose automático de ítems, dirección y método de pago.',
+      deliverables: [
+        'Menú digital interactivo con fotos HD, alérgenos y sugerencias de maridaje',
+        'Recepción de pedidos por WhatsApp formateados como comanda para cocina',
+        'Sistema de reservas de mesas para cenas con confirmación instantánea',
+        'Panel de caja para actualización instantánea de platos agotados'
+      ]
+    },
+    metrics: [
+      { label: 'Tiempo de Espera', value: '-65%', subtext: 'De 15 min a atención inmediata' },
+      { label: 'Ticket Promedio', value: '+28%', subtext: 'Por sugerencias de postres y vinos' },
+      { label: 'Errores en Comandas', value: '0%', subtext: 'Pedidos 100% estructurados' }
+    ],
+    testimonial: {
+      quote: 'Los clientes escanean el QR y piden sin esperar al mesero. Para delivery, el bot toma la orden completa sin que tengamos que escribir un solo mensaje a mano. Facturación más ágil y clientes felices.',
+      author: 'Mateo Cardona',
+      role: 'Chef Ejecutivo & Propietario'
+    },
+    serviceId: 'qr-menu',
+    serviceTitle: 'Menús QR & Pedidos Automatizados',
+    accentColor: 'amber'
+  },
+  {
+    id: 'case-hotel-paraiso',
+    name: 'Hotel Paraíso',
+    sub: 'BOUTIQUE & SPA',
+    icon: 'Building2',
+    industry: 'Hotelería Boutique & Turismo de Experiencia',
+    tagline: 'Motor de reservas directas sin comisiones y Concierge virtual bilingüe',
+    challenge: 'Pagaban entre el 18% y el 22% de comisión a plataformas externas (Booking, Airbnb) por no contar con una web propia moderna con motor de reserva ágil. Además, perdían consultas internacionales por la diferencia de huso horario.',
+    solution: {
+      title: 'Página Web de Alta Conversión + Concierge Virtual 24/7 Bilingüe',
+      description: 'Diseñamos una experiencia web inmersiva de alta velocidad con motor de reserva directa integrado, junto a un Concierge en WhatsApp capaz de responder en español e inglés sobre habitaciones, traslados y paquetes de spa.',
+      deliverables: [
+        'Web moderna móvil-first con checkout directo sin comisiones a terceros',
+        'Agente Concierge bilingüe (Español / Inglés) con respuestas instantáneas',
+        'Agenda integrada para masajes, tours y cenas privadas en el hotel',
+        'Sincronización de calendario iCal para prevenir sobreventas'
+      ]
+    },
+    metrics: [
+      { label: 'Reservas Directas', value: '+62%', subtext: 'Ventas directas en la web' },
+      { label: 'Ahorro en Comisiones', value: '$4,200', subtext: 'USD ahorrados en 90 días' },
+      { label: 'Velocidad de Carga', value: '1.4 seg', subtext: 'Optimización móvil total' }
+    ],
+    testimonial: {
+      quote: 'Infinity Impact nos dio la independencia que necesitábamos de las plataformas de reservas. Los turistas ahora reservan directo y el concierge virtual atiende dudas en inglés a las 3 de la madrugada sin errores.',
+      author: 'Carolina Valenzuela',
+      role: 'Gerente General'
+    },
+    serviceId: 'web-conversion',
+    serviceTitle: 'Páginas Web de Alta Conversión',
+    accentColor: 'blue'
+  },
+  {
+    id: 'case-fit-life',
+    name: 'FIT LIFE',
+    sub: 'GYM & WELLNESS CLUB',
+    icon: 'Dumbbell',
+    industry: 'Fitness, Acondicionamiento Físico & Bienestar',
+    tagline: 'Automatización de altas de socios, cobros recurrentes y clases de prueba',
+    challenge: 'Alta deserción de socios en los primeros meses. Para inscribirse, los interesados debían ir presencialmente a firmar papeles y pagar en caja. La recepción perdía horas recordando pagos mensuales por WhatsApp.',
+    solution: {
+      title: 'Embudo de Suscripciones Online + Asistente de Recuperación de Socios',
+      description: 'Automatizamos el ciclo completo del cliente: inscripción en 2 minutos desde el celular, pagos recurrentes con tarjeta y un asistente de WhatsApp que agenda clases de prueba gratuitas y reactiva a socios ausentes.',
+      deliverables: [
+        'Plataforma web de membresías con cobros recurrentes automatizados',
+        'Agente de WhatsApp que coordina pases de cortesía y clases grupales',
+        'Flujo de reactivación que detecta inasistencias prolongadas y motiva el retorno',
+        'Integración con control de acceso y sistema de notificaciones'
+      ]
+    },
+    metrics: [
+      { label: 'Nuevas Membresías', value: '+140', subtext: 'Inscritos en los primeros 60 días' },
+      { label: 'Retención de Socios', value: '+31%', subtext: 'Mayor permanencia trimestral' },
+      { label: 'Cobranza Automatizada', value: '100%', subtext: 'Cero cobranza manual en caja' }
+    ],
+    testimonial: {
+      quote: 'Antes nos pasábamos la primera semana del mes persiguiendo cuotas atrasadas. Ahora los socios se inscriben directo desde el celular y el bot llena los cupos de las clases de spinning en cuestión de minutos.',
+      author: 'Sebastián Ruiz',
+      role: 'Head Coach & Co-Fundador'
+    },
+    serviceId: 'local-seo',
+    serviceTitle: 'Posicionamiento & Sistemas de Captación',
+    accentColor: 'emerald'
+  },
+  {
+    id: 'case-estudio-juridico',
+    name: 'ESTUDIO JURÍDICO',
+    sub: 'ASESORES LEGALES CORPORATIVOS',
+    icon: 'Scale',
+    industry: 'Servicios Legales, Derecho Comercial & Tributario',
+    tagline: 'Filtro cualificador de causas legales y agenda de asesoría con pago previo',
+    challenge: 'Abogados con tarifas horarias elevadas atendían decenas de consultas informales por chat o llamadas que resultaban ser casos fuera de su especialidad o sin viabilidad económica, colapsando su jornada laboral.',
+    solution: {
+      title: 'Sistema de Triaje Jurídico Inteligente + Agenda de Consulta Pre-pagada',
+      description: 'Implementamos un formulario interactivo y filtro conversacional que identifica la materia del caso (laboral, corporativo, tributario), valida la viabilidad y procesa el pago de los honorarios de la primera consulta antes de agendar.',
+      deliverables: [
+        'Cuestionario inteligente de triaje legal y evaluación de compatibilidad',
+        'Cobro de consulta de diagnóstico previo al bloqueo de horario en la agenda',
+        'Generación de resumen ejecutivo del caso enviado al abogado antes del Meet',
+        'Sincronización con Google Calendar y sala de Google Meet automática'
+      ]
+    },
+    metrics: [
+      { label: 'Tiempo Recuperado', value: '+14 hrs', subtext: 'Semanales por cada abogado' },
+      { label: 'Consultas Pagadas', value: '100%', subtext: 'Cero llamadas informales' },
+      { label: 'Satisfacción Cliente', value: '4.9/5', subtext: 'Experiencia ejecutiva VIP' }
+    ],
+    testimonial: {
+      quote: 'Se acabó el perder horas respondiendo consultas que no correspondían a nuestra práctica. Ahora cada reunión que entra al calendario es con un cliente serio que ya abonó la consulta y cuyo expediente tenemos estudiado de antemano.',
+      author: 'Dr. Andrés Morales',
+      role: 'Socio Director'
+    },
+    serviceId: 'crm-whatsapp',
+    serviceTitle: 'CRM & Automatización para Profesionales',
+    accentColor: 'purple'
+  }
 ];
 
 export const SERVICES_LIST: ServiceItem[] = [

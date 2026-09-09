@@ -32,6 +32,7 @@ import {
 import { InfinityLogo, InfinityHeroEmblem } from './components/InfinityLogo';
 import { BookingModal } from './components/BookingModal';
 import { DemoSimulatorModal } from './components/DemoSimulatorModal';
+import { CaseStudyModal } from './components/CaseStudyModal';
 import { WorkspaceDashboard } from './components/WorkspaceDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { TactileRipple } from './components/TactileRipple';
@@ -43,7 +44,7 @@ import {
   VALUE_PROPOSITIONS,
   INDUSTRY_CASES
 } from './data';
-import { WorkspaceAuthState, AgencySiteConfig, ServiceItem, PricingPlan } from './types';
+import { WorkspaceAuthState, AgencySiteConfig, ServiceItem, PricingPlan, TrustClient } from './types';
 import { WORKSPACE_SCOPES, createCalendarEvent } from './workspace';
 import { loadAgencyConfig, saveAgencyConfig } from './adminDefaults';
 
@@ -123,6 +124,7 @@ export default function App() {
   // Modal states
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const [selectedCaseStudy, setSelectedCaseStudy] = useState<TrustClient | null>(null);
   const [selectedPlanForBooking, setSelectedPlanForBooking] = useState('INFINITY GROWTH');
   const [showWorkspaceHub, setShowWorkspaceHub] = useState(false);
 
@@ -715,34 +717,46 @@ export default function App() {
         className="py-12 border-y border-slate-800/80 bg-[#0a0d14]/60"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-[11px] font-semibold tracking-[0.25em] text-slate-400 uppercase mb-8">
-            NEGOCIOS QUE CONFÍAN EN NOSOTROS
-          </p>
+          <div className="text-center mb-8">
+            <p className="text-[11px] font-bold tracking-[0.25em] text-slate-400 uppercase">
+              NEGOCIOS QUE CONFÍAN EN NOSOTROS
+            </p>
+            <p className="text-xs text-slate-400 mt-2 flex items-center justify-center gap-1.5 font-medium">
+              <Sparkles size={13} className="text-emerald-400" />
+              <span>Haz clic en cualquier negocio para ver el caso de éxito y el trabajo realizado</span>
+            </p>
+          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 items-center justify-items-center opacity-75 hover:opacity-100 transition-opacity">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4 items-stretch justify-items-center">
             {TRUST_CLIENTS.map((client, idx) => (
-              <motion.div
-                key={idx}
+              <motion.button
+                key={client.id || idx}
+                type="button"
+                onClick={() => setSelectedCaseStudy(client)}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.06 }}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.92 }}
-                className="flex flex-col items-center gap-2 p-3 group cursor-pointer touch-card"
+                transition={{ duration: 0.4, delay: idx * 0.05 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.94 }}
+                className="w-full flex flex-col items-center justify-between gap-2.5 p-3.5 rounded-2xl bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/80 hover:border-emerald-500/50 transition-all group cursor-pointer text-center shadow-sm hover:shadow-lg hover:shadow-emerald-500/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
               >
-                <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:border-slate-700 group-hover:scale-110 transition-all shadow-sm">
+                <div className="w-11 h-11 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center group-hover:border-slate-700 group-hover:scale-105 transition-all shadow-inner">
                   {getClientIcon(client.icon)}
                 </div>
-                <div className="text-center">
-                  <div className="text-xs font-bold text-slate-200 tracking-wider group-hover:text-white">
+                <div className="w-full">
+                  <div className="text-xs font-bold text-slate-200 tracking-wider group-hover:text-white transition-colors">
                     {client.name}
                   </div>
-                  <div className="text-[9px] font-semibold text-slate-400 tracking-wider uppercase">
+                  <div className="text-[9px] font-semibold text-slate-400 tracking-wider uppercase truncate mt-0.5">
                     {client.sub}
                   </div>
                 </div>
-              </motion.div>
+                <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400/90 group-hover:text-emerald-300 pt-1 border-t border-slate-800/60 w-full justify-center">
+                  <span>Ver caso</span>
+                  <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -1108,6 +1122,15 @@ export default function App() {
       </footer>
 
       {/* MODALS */}
+      <CaseStudyModal
+        client={selectedCaseStudy}
+        onClose={() => setSelectedCaseStudy(null)}
+        onBookService={(serviceTitle) => {
+          setSelectedCaseStudy(null);
+          handleOpenBooking(serviceTitle);
+        }}
+      />
+
       <BookingModal
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
