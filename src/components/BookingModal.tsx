@@ -180,7 +180,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       }
 
       const meetingLink = agencyConfig.notifications.customMeetingLink || 'https://meet.google.com/infinity-impact-call';
-      const adminEmail = agencyConfig.notifications.adminEmail || 'jhostiel@gmail.com';
+      const adminEmail = agencyConfig.notifications.adminEmail || 'infinityimpactagency@gmail.com';
 
       // 2. Google Workspace operations if OAuth token is available in this browser session
       if (workspaceAuth.accessToken) {

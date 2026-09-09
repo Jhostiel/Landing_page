@@ -61,12 +61,16 @@ interface AdminDashboardProps {
   onBackToWebsite: () => void;
   workspaceAuth: WorkspaceAuthState;
   onInitiateOAuth: () => void;
+  onUpdateWorkspaceEmail?: (email: string) => void;
+  onDisconnectWorkspace?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onBackToWebsite,
   workspaceAuth,
   onInitiateOAuth,
+  onUpdateWorkspaceEmail,
+  onDisconnectWorkspace,
 }) => {
   // Authentication check
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -74,6 +78,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
+
+  // Workspace email quick-edit state
+  const [isEditingWorkspaceEmail, setIsEditingWorkspaceEmail] = useState(false);
+  const [workspaceEmailInput, setWorkspaceEmailInput] = useState(workspaceAuth.userEmail || 'infinityimpactagency@gmail.com');
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'hours' | 'bookings' | 'calendar' | 'notifications' | 'content' | 'workspace' | 'proposals'>('hours');
@@ -2427,31 +2435,88 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Conecta tu cuenta corporativa de Google para sincronizar citas en Calendar y despachar emails de confirmación y alertas desde tu Gmail real.
               </p>
 
-              <div className="p-6 bg-[#131926] border border-slate-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 font-bold text-sm text-white">
+              <div className="p-6 bg-[#131926] border border-slate-800 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2 font-bold text-sm text-white">
                     <span>Estado de Conexión Google Workspace:</span>
                     {workspaceAuth.isConnected ? (
-                      <span className="px-2.5 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold flex items-center gap-1">
-                        <CheckCircle2 size={12} /> Conectado ({workspaceAuth.userEmail || 'jhostiel@gmail.com'})
+                      <span className="px-2.5 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold flex items-center gap-1.5">
+                        <CheckCircle2 size={13} /> Conectado ({workspaceAuth.userEmail || 'infinityimpactagency@gmail.com'})
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 text-xs rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold flex items-center gap-1">
-                        <AlertCircle size={12} /> Desconectado
+                      <span className="px-2.5 py-0.5 text-xs rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold flex items-center gap-1.5">
+                        <AlertCircle size={13} /> Desconectado
                       </span>
                     )}
+
+                    {/* Quick switch/edit email button */}
+                    {workspaceAuth.isConnected && !isEditingWorkspaceEmail && (
+                      <button
+                        onClick={() => {
+                          setWorkspaceEmailInput(workspaceAuth.userEmail || 'infinityimpactagency@gmail.com');
+                          setIsEditingWorkspaceEmail(true);
+                        }}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 underline font-medium cursor-pointer transition-colors"
+                      >
+                        Cambiar correo
+                      </button>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
+
+                  {/* Inline Email Edit Form */}
+                  {isEditingWorkspaceEmail && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+                      <input
+                        type="email"
+                        value={workspaceEmailInput}
+                        onChange={(e) => setWorkspaceEmailInput(e.target.value)}
+                        placeholder="ej: infinityimpactagency@gmail.com"
+                        className="px-3 py-1.5 bg-slate-900 border border-cyan-500/50 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-400 w-64"
+                      />
+                      <button
+                        onClick={() => {
+                          onUpdateWorkspaceEmail?.(workspaceEmailInput);
+                          setIsEditingWorkspaceEmail(false);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        onClick={() => {
+                          setWorkspaceEmailInput(workspaceAuth.userEmail || 'infinityimpactagency@gmail.com');
+                          setIsEditingWorkspaceEmail(false);
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 text-slate-400 hover:text-white text-xs rounded-lg transition-colors cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-slate-400">
                     Permisos activos: Google Calendar (creación de eventos), Gmail (envío de correos de confirmación), Google Chat (alertas en tiempo real).
                   </p>
                 </div>
 
-                <button
-                  onClick={onInitiateOAuth}
-                  className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all shrink-0"
-                >
-                  {workspaceAuth.isConnected ? 'Reconectar / Actualizar Token' : 'Conectar Google Workspace'}
-                </button>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={onInitiateOAuth}
+                    className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+                  >
+                    {workspaceAuth.isConnected ? 'Reconectar / Actualizar' : 'Conectar Google Workspace'}
+                  </button>
+
+                  {workspaceAuth.isConnected && onDisconnectWorkspace && (
+                    <button
+                      onClick={onDisconnectWorkspace}
+                      className="px-4 py-2.5 bg-slate-800/80 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-700/80 hover:border-rose-500/40 font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                      title="Desconectar cuenta Google Workspace"
+                    >
+                      Desconectar
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">

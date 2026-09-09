@@ -337,18 +337,23 @@ export default function App() {
   // Google Workspace auth state
   const [workspaceAuth, setWorkspaceAuth] = useState<WorkspaceAuthState>(() => {
     const savedToken = localStorage.getItem('google_access_token');
-    const savedEmail = localStorage.getItem('google_user_email');
+    let savedEmail = localStorage.getItem('google_user_email');
+    // Migrate or initialize to infinityimpactagency@gmail.com
+    if (!savedEmail || savedEmail === 'jhostiel@gmail.com') {
+      savedEmail = 'infinityimpactagency@gmail.com';
+      localStorage.setItem('google_user_email', savedEmail);
+    }
     if (savedToken) {
       fetch('/api/workspace/sync-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: savedToken, email: savedEmail || 'infinityimpactagency@gmail.com' }),
+        body: JSON.stringify({ token: savedToken, email: savedEmail }),
       }).catch(() => {});
     }
     return {
       isConnected: !!savedToken,
       accessToken: savedToken,
-      userEmail: savedEmail || 'infinityimpactagency@gmail.com',
+      userEmail: savedEmail,
       scopes: WORKSPACE_SCOPES,
     };
   });
@@ -416,17 +421,43 @@ export default function App() {
       });
       client.requestAccessToken();
     } else {
-      // Simulate connected state with the user's jhostiel@gmail.com account for preview interaction
+      // Connected state with infinityimpactagency@gmail.com account
       const mockToken = 'workspace_active_token_' + Date.now();
       localStorage.setItem('google_access_token', mockToken);
-      localStorage.setItem('google_user_email', 'jhostiel@gmail.com');
+      localStorage.setItem('google_user_email', 'infinityimpactagency@gmail.com');
       setWorkspaceAuth({
         isConnected: true,
         accessToken: mockToken,
-        userEmail: 'jhostiel@gmail.com',
+        userEmail: 'infinityimpactagency@gmail.com',
         scopes: WORKSPACE_SCOPES,
       });
     }
+  };
+
+  const handleUpdateWorkspaceEmail = (newEmail: string) => {
+    const clean = newEmail.trim() || 'infinityimpactagency@gmail.com';
+    localStorage.setItem('google_user_email', clean);
+    setWorkspaceAuth((prev) => ({
+      ...prev,
+      userEmail: clean,
+    }));
+    if (workspaceAuth.accessToken) {
+      fetch('/api/workspace/sync-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: workspaceAuth.accessToken, email: clean }),
+      }).catch(() => {});
+    }
+  };
+
+  const handleDisconnectWorkspace = () => {
+    localStorage.removeItem('google_access_token');
+    setWorkspaceAuth({
+      isConnected: false,
+      accessToken: null,
+      userEmail: 'infinityimpactagency@gmail.com',
+      scopes: [],
+    });
   };
 
   const handleOpenBooking = (planName?: string) => {
@@ -453,6 +484,8 @@ export default function App() {
         onBackToWebsite={navigateToWebsite}
         workspaceAuth={workspaceAuth}
         onInitiateOAuth={handleInitiateOAuth}
+        onUpdateWorkspaceEmail={handleUpdateWorkspaceEmail}
+        onDisconnectWorkspace={handleDisconnectWorkspace}
       />
     );
   }
