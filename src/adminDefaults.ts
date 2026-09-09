@@ -1,47 +1,89 @@
 import { AgencySiteConfig, LeadData, NotificationLog } from './types';
 
 export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = {
-  agencyName: 'Infinity Impact Agency',
-  headline: 'Automatizamos el Crecimiento de tu Negocio con Inteligencia Artificial',
-  subheadline: 'Agentes inteligentes para WhatsApp, captación automatizada de clientes de alto valor y páginas web de alta conversión.',
-  whatsappNumber: '+56 9 8765 4321',
-  contactEmail: 'infinityimpactagency@gmail.com',
-  supportHoursText: 'Lunes a Viernes 09:00 a 19:00 hrs | Sábados 10:00 a 14:00 hrs',
-  hoursConfig: {
-    days: [
-      { day: 1, name: 'Lunes', active: true, startTime: '09:00', endTime: '19:00' },
-      { day: 2, name: 'Martes', active: true, startTime: '09:00', endTime: '19:00' },
-      { day: 3, name: 'Miércoles', active: true, startTime: '09:00', endTime: '19:00' },
-      { day: 4, name: 'Jueves', active: true, startTime: '09:00', endTime: '19:00' },
-      { day: 5, name: 'Viernes', active: true, startTime: '09:00', endTime: '19:00' },
-      { day: 6, name: 'Sábado', active: true, startTime: '10:00', endTime: '14:00' },
-      { day: 0, name: 'Domingo', active: false, startTime: '10:00', endTime: '13:00' },
+  "agencyName": "Infinity Impact Agency",
+  "headline": "Automatizamos el Crecimiento de tu Negocio con Inteligencia Artificial",
+  "subheadline": "Agentes inteligentes para WhatsApp, captación automatizada de clientes de alto valor y páginas web de alta conversión.",
+  "whatsappNumber": "+56 9 8765 4321",
+  "contactEmail": "infinityimpactagency@gmail.com",
+  "supportHoursText": "Lunes a Viernes 09:00 a 19:00 hrs | Sábados 10:00 a 14:00 hrs",
+  "hoursConfig": {
+    "days": [
+      {
+        "day": 1,
+        "name": "Lunes",
+        "active": true,
+        "startTime": "09:00",
+        "endTime": "19:00"
+      },
+      {
+        "day": 2,
+        "name": "Martes",
+        "active": true,
+        "startTime": "09:00",
+        "endTime": "19:00"
+      },
+      {
+        "day": 3,
+        "name": "Miércoles",
+        "active": true,
+        "startTime": "09:00",
+        "endTime": "19:00"
+      },
+      {
+        "day": 4,
+        "name": "Jueves",
+        "active": true,
+        "startTime": "09:00",
+        "endTime": "19:00"
+      },
+      {
+        "day": 5,
+        "name": "Viernes",
+        "active": true,
+        "startTime": "09:00",
+        "endTime": "19:00"
+      },
+      {
+        "day": 6,
+        "name": "Sábado",
+        "active": true,
+        "startTime": "10:00",
+        "endTime": "14:00"
+      },
+      {
+        "day": 0,
+        "name": "Domingo",
+        "active": false,
+        "startTime": "10:00",
+        "endTime": "13:00"
+      }
     ],
-    slotDurationMinutes: 45,
-    breakBetweenSlotsMinutes: 15,
-    minNoticeHours: 2,
-    timezone: 'America/Bogota',
-    maxDailyBookings: 8,
-    blockedDates: [],
+    "slotDurationMinutes": 45,
+    "breakBetweenSlotsMinutes": 15,
+    "minNoticeHours": 2,
+    "timezone": "America/Bogota",
+    "maxDailyBookings": 8,
+    "blockedDates": []
   },
-  notifications: {
-    adminEmail: 'infinityimpactagency@gmail.com',
-    adminPhone: '+56 9 8765 4321',
-    notifyAdminOnBooking: true,
-    notifySoundEnabled: true,
-    sendClientConfirmationEmail: true,
-    emailSubjectTemplate: 'Confirmación de Llamada Estratégica: Infinity Impact Agency',
-    customMeetingLink: 'https://meet.google.com/inf-agen-impact',
-    notifyGoogleChat: true,
-    chatSpaceName: 'spaces/sales-leads-infinity',
-    googleCalendarId: 'infinityimpactagency@gmail.com',
-    googleCalendarEmbedUrl: 'https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota',
+  "notifications": {
+    "adminEmail": "infinityimpactagency@gmail.com",
+    "adminPhone": "+56 9 8765 4321",
+    "notifyAdminOnBooking": true,
+    "notifySoundEnabled": true,
+    "sendClientConfirmationEmail": true,
+    "emailSubjectTemplate": "Confirmación de Llamada Estratégica: Infinity Impact Agency",
+    "customMeetingLink": "https://meet.google.com/inf-agen-impact",
+    "notifyGoogleChat": true,
+    "chatSpaceName": "spaces/sales-leads-infinity",
+    "googleCalendarId": "infinityimpactagency@gmail.com",
+    "googleCalendarEmbedUrl": "https://calendar.google.com/calendar/embed?src=infinityimpactagency%40gmail.com&ctz=America%2FBogota"
   },
-  stats: {
-    activeClients: '45+',
-    leadsDelivered: '180,000+',
-    satisfactionRate: '99.4%',
-    hoursSaved: '3,200 hrs',
+  "stats": {
+    "activeClients": "45+",
+    "leadsDelivered": "180,000+",
+    "satisfactionRate": "99.4%",
+    "hoursSaved": "3,200 hrs"
   }
 };
 

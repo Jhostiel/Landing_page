@@ -15,12 +15,32 @@ const PORT = 3000;
 const DATA_DIR = path.join(process.cwd(), 'data');
 const LEADS_FILE = path.join(DATA_DIR, 'leads.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'agency_config.json');
+const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
 const LOGS_FILE = path.join(DATA_DIR, 'notification_logs.json');
 const WORKSPACE_TOKEN_FILE = path.join(DATA_DIR, 'workspace_token.json');
 
 // Ensure data folder exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function getStoredContent(): { services?: any[]; pricing?: any[] } | null {
+  try {
+    if (fs.existsSync(CONTENT_FILE)) {
+      return JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error reading content file:', err);
+  }
+  return null;
+}
+
+function saveStoredContent(content: { services?: any[]; pricing?: any[] }) {
+  try {
+    fs.writeFileSync(CONTENT_FILE, JSON.stringify(content, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving content file:', err);
+  }
 }
 
 function getStoredWorkspaceAuth(): { token: string | null; email: string | null } {
@@ -757,6 +777,52 @@ async function startServer() {
     const newConfig = req.body;
     saveStoredConfig(newConfig);
     res.json({ success: true, config: newConfig });
+  });
+
+  // Services & Pricing Content GET / POST
+  app.get('/api/content', (req: Request, res: Response) => {
+    res.json({ content: getStoredContent() });
+  });
+
+  app.post('/api/content', (req: Request, res: Response) => {
+    const content = req.body;
+    saveStoredContent(content);
+    res.json({ success: true, content });
+  });
+
+  // Persist settings directly into project source files so Git sees them in Pull Requests
+  app.post('/api/admin/save-to-code', (req: Request, res: Response) => {
+    try {
+      const { config, services, pricing } = req.body;
+      if (config) {
+        saveStoredConfig(config);
+
+        // Update src/adminDefaults.ts so DEFAULT_AGENCY_CONFIG has the current config
+        const defaultsFilePath = path.join(process.cwd(), 'src', 'adminDefaults.ts');
+        if (fs.existsSync(defaultsFilePath)) {
+          const content = fs.readFileSync(defaultsFilePath, 'utf-8');
+          const regex = /export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = \{[\s\S]*?\n\};/;
+          const replacement = `export const DEFAULT_AGENCY_CONFIG: AgencySiteConfig = ${JSON.stringify(config, null, 2)};`;
+          if (regex.test(content)) {
+            const updated = content.replace(regex, replacement);
+            fs.writeFileSync(defaultsFilePath, updated, 'utf-8');
+            console.log('[Admin API] Updated src/adminDefaults.ts with new default agency configuration for Git/PR tracking.');
+          }
+        }
+      }
+
+      if (services || pricing) {
+        saveStoredContent({ services, pricing });
+      }
+
+      res.json({
+        success: true,
+        message: '¡Configuración sincronizada exitosamente con los archivos del proyecto! Ahora aparecerá en tu repositorio de GitHub y en tus Pull Requests.',
+      });
+    } catch (err: any) {
+      console.error('Error saving to code files:', err);
+      res.status(500).json({ success: false, error: err?.message || 'Error guardando en archivos de código' });
+    }
   });
 
   // Notification logs

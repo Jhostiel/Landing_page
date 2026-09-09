@@ -45,7 +45,7 @@ import {
 } from './data';
 import { WorkspaceAuthState, AgencySiteConfig, ServiceItem, PricingPlan } from './types';
 import { WORKSPACE_SCOPES, createCalendarEvent } from './workspace';
-import { loadAgencyConfig } from './adminDefaults';
+import { loadAgencyConfig, saveAgencyConfig } from './adminDefaults';
 
 function getGoogleCalendarUrl(booking: { name: string; date: string; timeSlot: string; businessName?: string; serviceInterest?: string; meetingLink: string }) {
   try {
@@ -266,8 +266,33 @@ export default function App() {
     checkEmailConfirmation();
   }, [agencyConfig.notifications.customMeetingLink]);
 
-  // Listen to configuration updates from Admin Dashboard
+  // Listen to configuration updates from Admin Dashboard & fetch server config on mount
   useEffect(() => {
+    // Initial fetch from backend to ensure data persists across devices/PRs
+    fetch('/api/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.config) {
+          setAgencyConfig((prev) => ({ ...prev, ...data.config }));
+          saveAgencyConfig(data.config);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/content')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.content?.services) {
+          setServices(data.content.services);
+          localStorage.setItem('infinity_services_content', JSON.stringify(data.content.services));
+        }
+        if (data?.content?.pricing) {
+          setPricing(data.content.pricing);
+          localStorage.setItem('infinity_pricing_content', JSON.stringify(data.content.pricing));
+        }
+      })
+      .catch(() => {});
+
     const handleConfigUpdate = () => {
       setAgencyConfig(loadAgencyConfig());
       try {

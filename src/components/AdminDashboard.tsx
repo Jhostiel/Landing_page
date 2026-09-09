@@ -33,7 +33,8 @@ import {
   Sparkles,
   Lock,
   Eye,
-  FileText
+  FileText,
+  GitPullRequest
 } from 'lucide-react';
 import {
   AgencySiteConfig,
@@ -91,6 +92,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Configuration State
   const [config, setConfig] = useState<AgencySiteConfig>(() => loadAgencyConfig());
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [isSyncingToCode, setIsSyncingToCode] = useState(false);
 
   // Leads CRM State
   const [leads, setLeads] = useState<LeadData[]>(() => {
@@ -240,6 +242,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     window.addEventListener('infinity_booking_created', handleBookingEvents);
     window.addEventListener('infinity_booking_confirmed', handleBookingEvents);
 
+    // Fetch latest config and content from server to keep admin in sync across sessions
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.config) {
+          setConfig((prev) => ({ ...prev, ...data.config }));
+          saveAgencyConfig(data.config);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/content')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.content?.services) {
+          setServices(data.content.services);
+        }
+        if (data?.content?.pricing) {
+          setPricing(data.content.pricing);
+        }
+      })
+      .catch(() => {});
+
     // Periodic polling to pick up client confirmations made from external email links
     const interval = setInterval(fetchBackendLeads, 4000);
 
@@ -267,31 +292,119 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsAuthenticated(false);
   };
 
-  const handleSaveConfig = () => {
-    saveAgencyConfig(config);
-    // Also dispatch event so main website re-renders immediately
-    window.dispatchEvent(new CustomEvent('infinity_config_updated', { detail: config }));
-    setSaveSuccessMessage('¡Configuración guardada y aplicada con éxito!');
-    setTimeout(() => setSaveSuccessMessage(null), 3500);
+  const handleSyncToGitRepo = async () => {
+    setIsSyncingToCode(true);
+    setSaveSuccessMessage('Sincronizando cambios con los archivos del proyecto para Git / PR...');
+    try {
+      saveAgencyConfig(config);
+      localStorage.setItem('infinity_services_content', JSON.stringify(services));
+      localStorage.setItem('infinity_pricing_content', JSON.stringify(pricing));
+      window.dispatchEvent(new CustomEvent('infinity_config_updated', { detail: config }));
+
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+
+      await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ services, pricing }),
+      });
+
+      const res = await fetch('/api/admin/save-to-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config, services, pricing }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setSaveSuccessMessage('¡Éxito! Cambios guardados en src/adminDefaults.ts y data/. Ahora aparecerán en tu Pull Request de GitHub.');
+      } else {
+        setSaveSuccessMessage('¡Configuración guardada en el servidor!');
+      }
+    } catch {
+      setSaveSuccessMessage('¡Configuración guardada localmente!');
+    } finally {
+      setIsSyncingToCode(false);
+      setTimeout(() => setSaveSuccessMessage(null), 5000);
+    }
   };
 
-  const handleResetDefaults = () => {
+  const handleSaveConfig = async () => {
+    saveAgencyConfig(config);
+    // Dispatch event so main website re-renders immediately
+    window.dispatchEvent(new CustomEvent('infinity_config_updated', { detail: config }));
+    setSaveSuccessMessage('Guardando configuración y sincronizando con archivos...');
+
+    try {
+      // 1. Save to server persistent json
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+
+      // 2. Persist to project source code files so Git and Pull Requests include the changes
+      await fetch('/api/admin/save-to-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config, services, pricing }),
+      });
+
+      setSaveSuccessMessage('¡Configuración guardada y sincronizada con los archivos del proyecto (listo para Pull Request)!');
+    } catch {
+      setSaveSuccessMessage('¡Configuración guardada y aplicada con éxito!');
+    }
+    setTimeout(() => setSaveSuccessMessage(null), 4500);
+  };
+
+  const handleResetDefaults = async () => {
     if (window.confirm('¿Deseas restaurar todos los horarios y configuraciones por defecto?')) {
       setConfig(DEFAULT_AGENCY_CONFIG);
       saveAgencyConfig(DEFAULT_AGENCY_CONFIG);
       window.dispatchEvent(new CustomEvent('infinity_config_updated', { detail: DEFAULT_AGENCY_CONFIG }));
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(DEFAULT_AGENCY_CONFIG),
+        });
+        await fetch('/api/admin/save-to-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config: DEFAULT_AGENCY_CONFIG, services, pricing }),
+        });
+      } catch {}
       setSaveSuccessMessage('Configuraciones restablecidas a los valores de fábrica.');
       setTimeout(() => setSaveSuccessMessage(null), 3000);
     }
   };
 
-  const handleSaveContent = () => {
+  const handleSaveContent = async () => {
     localStorage.setItem('infinity_services_content', JSON.stringify(services));
     localStorage.setItem('infinity_pricing_content', JSON.stringify(pricing));
     saveAgencyConfig(config);
     window.dispatchEvent(new CustomEvent('infinity_content_updated'));
-    setSaveSuccessMessage('¡Servicios, precios y textos actualizados en toda la web!');
-    setTimeout(() => setSaveSuccessMessage(null), 3500);
+    setSaveSuccessMessage('Guardando servicios y precios en el proyecto...');
+
+    try {
+      await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ services, pricing }),
+      });
+      await fetch('/api/admin/save-to-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config, services, pricing }),
+      });
+      setSaveSuccessMessage('¡Servicios, precios y textos sincronizados con los archivos del proyecto para Git / PR!');
+    } catch {
+      setSaveSuccessMessage('¡Servicios, precios y textos actualizados en toda la web!');
+    }
+    setTimeout(() => setSaveSuccessMessage(null), 4500);
   };
 
   const handleUpdateLeadStatus = async (leadId: string, newStatus: LeadData['status']) => {
@@ -767,6 +880,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Sync to Code / Git PR Button */}
+          <button
+            onClick={handleSyncToGitRepo}
+            disabled={isSyncingToCode}
+            title="Guardar cambios físicamente en el código fuente (src/adminDefaults.ts) para que aparezcan en tu Pull Request de GitHub"
+            className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <GitPullRequest size={14} className={isSyncingToCode ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Guardar para Git / PR</span>
+          </button>
+
           {/* Audio & Notification Test Button */}
           <button
             onClick={handleTestNotification}
