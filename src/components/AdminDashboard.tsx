@@ -208,8 +208,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: testEmailAddress }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      let data: any = null;
+      const text = await res.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // Non-JSON response (e.g. server crash or Vercel function error page)
+        data = {
+          success: false,
+          error: text.includes('A server error')
+            ? 'Error en el servidor de Vercel al procesar el envío. Despliega la última versión compilada en Vercel para aplicar la corrección de imports.'
+            : text.slice(0, 300) || `Error HTTP ${res.status}: Respuesta no válida del servidor.`,
+        };
+      }
+
+      if (res.ok && data?.success) {
         setTestEmailResult({
           success: true,
           message: data.message || `Correo enviado a ${testEmailAddress}`,
@@ -218,13 +231,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       } else {
         setTestEmailResult({
           success: false,
-          message: data.error || 'No se pudo enviar el correo de prueba.',
+          message: data?.error || 'No se pudo enviar el correo de prueba.',
         });
       }
     } catch (err: any) {
       setTestEmailResult({
         success: false,
-        message: err.message || 'Error de conexión con el servidor',
+        message: err?.message || 'Error de conexión con el servidor',
       });
     } finally {
       setIsSendingTest(false);
