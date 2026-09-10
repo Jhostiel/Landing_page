@@ -499,6 +499,7 @@ var isVercel = Boolean(
 );
 var DATA_DIR = isVercel ? path.join("/tmp", "infinity_data") : path.join(process.cwd(), "data");
 var LEADS_FILE = path.join(DATA_DIR, "leads.json");
+var DELETED_LEADS_FILE = path.join(DATA_DIR, "deleted_lead_ids.json");
 var CONFIG_FILE = path.join(DATA_DIR, "agency_config.json");
 var CONTENT_FILE = path.join(DATA_DIR, "content.json");
 var LOGS_FILE = path.join(DATA_DIR, "notification_logs.json");
@@ -511,6 +512,7 @@ try {
   console.warn("Notice: DATA_DIR creation check:", e);
 }
 var memoryLeads = [];
+var memoryDeletedIds = /* @__PURE__ */ new Set();
 var memoryConfig = DEFAULT_AGENCY_CONFIG;
 var memoryContent = null;
 var memoryLogs = [];
@@ -518,6 +520,37 @@ var memoryWorkspaceToken = {
   token: null,
   email: "infinityimpactagency@gmail.com"
 };
+function getDeletedLeadIds() {
+  try {
+    if (fs.existsSync(DELETED_LEADS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DELETED_LEADS_FILE, "utf-8"));
+      if (Array.isArray(data)) {
+        data.forEach((id) => memoryDeletedIds.add(id));
+      }
+    }
+  } catch (err) {
+    console.warn("Error reading deleted leads file:", err);
+  }
+  return memoryDeletedIds;
+}
+function addDeletedLeadId(id) {
+  memoryDeletedIds.add(id);
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DELETED_LEADS_FILE, JSON.stringify(Array.from(memoryDeletedIds), null, 2), "utf-8");
+  } catch (err) {
+    console.warn("Notice: deleted id saved to memory:", err);
+  }
+}
+function addDeletedLeadIds(ids) {
+  ids.forEach((id) => memoryDeletedIds.add(id));
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DELETED_LEADS_FILE, JSON.stringify(Array.from(memoryDeletedIds), null, 2), "utf-8");
+  } catch (err) {
+    console.warn("Notice: deleted ids saved to memory:", err);
+  }
+}
 function getStoredContent() {
   try {
     if (fs.existsSync(CONTENT_FILE)) {
@@ -579,35 +612,39 @@ function saveStoredWorkspaceAuth(token, email) {
   }
 }
 function getStoredLeads() {
+  const deleted = getDeletedLeadIds();
   try {
     if (fs.existsSync(LEADS_FILE)) {
       const data = fs.readFileSync(LEADS_FILE, "utf-8");
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        memoryLeads = parsed;
-        return parsed;
+      if (Array.isArray(parsed)) {
+        memoryLeads = parsed.filter((l) => l && l.id && !deleted.has(l.id));
+        return memoryLeads;
       }
-    } else if (isVercel) {
+    }
+    if (isVercel) {
       const bundled = path.join(process.cwd(), "data", "leads.json");
       if (fs.existsSync(bundled)) {
         const data = fs.readFileSync(bundled, "utf-8");
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryLeads = parsed;
-          return parsed;
+        if (Array.isArray(parsed)) {
+          memoryLeads = parsed.filter((l) => l && l.id && !deleted.has(l.id));
+          return memoryLeads;
         }
       }
     }
   } catch (err) {
     console.error("Error reading leads file:", err);
   }
-  return memoryLeads;
+  return memoryLeads.filter((l) => l && l.id && !deleted.has(l.id));
 }
 function saveStoredLeads(leads) {
-  memoryLeads = leads;
+  const deleted = getDeletedLeadIds();
+  const cleaned = leads.filter((l) => l && l.id && !deleted.has(l.id));
+  memoryLeads = cleaned;
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(LEADS_FILE, JSON.stringify(leads, null, 2), "utf-8");
+    fs.writeFileSync(LEADS_FILE, JSON.stringify(cleaned, null, 2), "utf-8");
   } catch (err) {
     console.warn("Notice: leads saved to memory cache:", err);
   }
@@ -1228,15 +1265,58 @@ app.patch(["/api/leads/:id", "/leads/:id"], (req, res) => {
   res.json({ success: true, lead: leads[leadIndex] });
 });
 app.delete(["/api/leads", "/leads"], (req, res) => {
+  const current = getStoredLeads();
+  addDeletedLeadIds(current.map((l) => l.id));
   saveStoredLeads([]);
   res.json({ success: true, count: 0 });
 });
 app.delete(["/api/leads/:id", "/leads/:id"], (req, res) => {
   const { id } = req.params;
+  addDeletedLeadId(id);
   let leads = getStoredLeads();
   leads = leads.filter((l) => l.id !== id);
   saveStoredLeads(leads);
   res.json({ success: true });
+});
+app.post(["/api/leads/sync", "/leads/sync"], (req, res) => {
+  try {
+    const { clientLeads = [], deletedIds = [] } = req.body;
+    if (Array.isArray(deletedIds) && deletedIds.length > 0) {
+      addDeletedLeadIds(deletedIds);
+    }
+    const deleted = getDeletedLeadIds();
+    let serverLeads = getStoredLeads();
+    if (Array.isArray(clientLeads) && clientLeads.length > 0) {
+      const serverMap = new Map(serverLeads.map((l) => [l.id, l]));
+      let modified = false;
+      for (const cl of clientLeads) {
+        if (cl && cl.id && !deleted.has(cl.id)) {
+          const existing = serverMap.get(cl.id);
+          if (!existing) {
+            serverMap.set(cl.id, cl);
+            modified = true;
+          } else if (cl.status === "confirmado" && existing.status !== "confirmado") {
+            serverMap.set(cl.id, { ...existing, ...cl });
+            modified = true;
+          }
+        }
+      }
+      if (modified) {
+        serverLeads = Array.from(serverMap.values()).sort(
+          (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+        );
+        saveStoredLeads(serverLeads);
+      }
+    }
+    res.json({
+      success: true,
+      leads: serverLeads,
+      deletedIds: Array.from(deleted)
+    });
+  } catch (err) {
+    console.error("Error in leads sync:", err);
+    res.status(500).json({ error: err.message || "Error en sincronizaci\xF3n de reservas" });
+  }
 });
 app.post(["/api/leads/:id/resend", "/leads/:id/resend"], async (req, res) => {
   const { id } = req.params;

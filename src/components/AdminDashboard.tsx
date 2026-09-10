@@ -97,7 +97,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Leads CRM State
   const [leads, setLeads] = useState<LeadData[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('infinity_leads') || '[]');
+      const deletedSet = new Set<string>(
+        JSON.parse(localStorage.getItem('infinity_deleted_lead_ids') || '[]')
+      );
+      const raw: LeadData[] = JSON.parse(localStorage.getItem('infinity_leads') || '[]');
+      return Array.isArray(raw)
+        ? raw.filter((l) => l && l.id && !deletedSet.has(l.id))
+        : [];
     } catch {
       return [];
     }
@@ -244,16 +250,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // Fetch leads from backend and synchronize with local storage
+  // Fetch leads from backend and synchronize with local storage (Bidirectional Smart Sync)
   const fetchBackendLeads = async () => {
     try {
+      const deletedIds: string[] = JSON.parse(
+        localStorage.getItem('infinity_deleted_lead_ids') || '[]'
+      );
+      const deletedSet = new Set(deletedIds);
+      const rawLocal: LeadData[] = JSON.parse(
+        localStorage.getItem('infinity_leads') || '[]'
+      );
+      const localLeads = Array.isArray(rawLocal)
+        ? rawLocal.filter((l) => l && l.id && !deletedSet.has(l.id))
+        : [];
+
+      // 1. Try smart sync endpoint first
+      try {
+        const syncRes = await fetch('/api/leads/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientLeads: localLeads, deletedIds }),
+        });
+
+        if (syncRes.ok) {
+          const syncData = await syncRes.json();
+          const serverLeads: LeadData[] = Array.isArray(syncData.leads) ? syncData.leads : [];
+          const serverDeleted: string[] = Array.isArray(syncData.deletedIds) ? syncData.deletedIds : [];
+
+          // Merge deleted IDs
+          serverDeleted.forEach((id) => deletedSet.add(id));
+          localStorage.setItem('infinity_deleted_lead_ids', JSON.stringify(Array.from(deletedSet)));
+
+          // Merge local + server leads
+          const map = new Map<string, LeadData>();
+          for (const l of [...localLeads, ...serverLeads]) {
+            if (l && l.id && !deletedSet.has(l.id)) {
+              const existing = map.get(l.id);
+              if (!existing || (l.status === 'confirmado' && existing.status !== 'confirmado')) {
+                map.set(l.id, l);
+              }
+            }
+          }
+
+          const merged = Array.from(map.values()).sort(
+            (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+          );
+
+          setLeads(merged);
+          localStorage.setItem('infinity_leads', JSON.stringify(merged));
+          return;
+        }
+      } catch (syncErr) {
+        console.warn('Sync endpoint fallback to standard fetch:', syncErr);
+      }
+
+      // 2. Fallback to standard GET /api/leads with smart merge
       const res = await fetch('/api/leads');
       if (res.ok) {
         const data = await res.json();
-        if (data.leads && Array.isArray(data.leads)) {
-          setLeads(data.leads);
-          localStorage.setItem('infinity_leads', JSON.stringify(data.leads));
+        const serverLeads: LeadData[] = Array.isArray(data.leads) ? data.leads : [];
+        const map = new Map<string, LeadData>();
+        for (const l of [...localLeads, ...serverLeads]) {
+          if (l && l.id && !deletedSet.has(l.id)) {
+            const existing = map.get(l.id);
+            if (!existing || (l.status === 'confirmado' && existing.status !== 'confirmado')) {
+              map.set(l.id, l);
+            }
+          }
         }
+        const merged = Array.from(map.values()).sort(
+          (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+        );
+        setLeads(merged);
+        localStorage.setItem('infinity_leads', JSON.stringify(merged));
       }
     } catch (e) {
       console.warn('Backend leads sync notice:', e);
@@ -463,13 +532,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const confirmDeleteLead = async (leadId: string) => {
     setIsDeletingLead(true);
-    // 1. Immediately update local state and localStorage
+    // 1. Immediately record in deleted IDs set
+    const deleted = new Set<string>(
+      JSON.parse(localStorage.getItem('infinity_deleted_lead_ids') || '[]')
+    );
+    deleted.add(leadId);
+    localStorage.setItem('infinity_deleted_lead_ids', JSON.stringify(Array.from(deleted)));
+
+    // 2. Immediately update local state and localStorage
     const updated = leads.filter((l) => l.id !== leadId);
     setLeads(updated);
     localStorage.setItem('infinity_leads', JSON.stringify(updated));
     setLeadToDelete(null);
 
-    // 2. Call backend DELETE endpoint to eliminate from server storage
+    // 3. Call backend DELETE endpoint to eliminate from server storage
     try {
       const res = await fetch(`/api/leads/${leadId}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -487,12 +563,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const confirmClearAllLeads = async () => {
     setIsDeletingLead(true);
-    // 1. Clear local state and localStorage
+    // 1. Record all current lead IDs in deleted IDs set
+    const deleted = new Set<string>(
+      JSON.parse(localStorage.getItem('infinity_deleted_lead_ids') || '[]')
+    );
+    leads.forEach((l) => deleted.add(l.id));
+    localStorage.setItem('infinity_deleted_lead_ids', JSON.stringify(Array.from(deleted)));
+
+    // 2. Clear local state and localStorage
     setLeads([]);
     localStorage.setItem('infinity_leads', JSON.stringify([]));
     setShowClearAllModal(false);
 
-    // 2. Call backend DELETE endpoint
+    // 3. Call backend DELETE endpoint
     try {
       await fetch('/api/leads', { method: 'DELETE' });
     } catch (err) {
@@ -801,10 +884,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       sentEmail: false,
     };
 
+    // Remove from deleted list if present
+    const deleted = new Set<string>(JSON.parse(localStorage.getItem('infinity_deleted_lead_ids') || '[]'));
+    deleted.delete(newLead.id);
+    localStorage.setItem('infinity_deleted_lead_ids', JSON.stringify(Array.from(deleted)));
+
     const updated = [newLead, ...leads];
     setLeads(updated);
     localStorage.setItem('infinity_leads', JSON.stringify(updated));
     setIsManualModalOpen(false);
+
+    // Sync to backend
+    fetch('/api/leads/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientLeads: [newLead] }),
+    }).catch((e) => console.warn('Manual lead sync notice:', e));
 
     // Reset inputs
     setManualName('');

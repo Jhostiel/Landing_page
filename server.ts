@@ -36,6 +36,7 @@ const isVercel = Boolean(
 // On Vercel, process.cwd() is read-only so /tmp must be used for dynamic file writing
 const DATA_DIR = isVercel ? path.join('/tmp', 'infinity_data') : path.join(process.cwd(), 'data');
 const LEADS_FILE = path.join(DATA_DIR, 'leads.json');
+const DELETED_LEADS_FILE = path.join(DATA_DIR, 'deleted_lead_ids.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'agency_config.json');
 const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
 const LOGS_FILE = path.join(DATA_DIR, 'notification_logs.json');
@@ -52,6 +53,7 @@ try {
 
 // In-memory fallbacks to guarantee 100% serverless resilience even if filesystem is read-only
 let memoryLeads: LeadData[] = [];
+let memoryDeletedIds: Set<string> = new Set();
 let memoryConfig: AgencySiteConfig = DEFAULT_AGENCY_CONFIG;
 let memoryContent: { services?: any[]; pricing?: any[] } | null = null;
 let memoryLogs: any[] = [];
@@ -59,6 +61,40 @@ let memoryWorkspaceToken: { token: string | null; email: string | null } = {
   token: null,
   email: 'infinityimpactagency@gmail.com',
 };
+
+function getDeletedLeadIds(): Set<string> {
+  try {
+    if (fs.existsSync(DELETED_LEADS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DELETED_LEADS_FILE, 'utf-8'));
+      if (Array.isArray(data)) {
+        data.forEach((id: string) => memoryDeletedIds.add(id));
+      }
+    }
+  } catch (err) {
+    console.warn('Error reading deleted leads file:', err);
+  }
+  return memoryDeletedIds;
+}
+
+function addDeletedLeadId(id: string) {
+  memoryDeletedIds.add(id);
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DELETED_LEADS_FILE, JSON.stringify(Array.from(memoryDeletedIds), null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Notice: deleted id saved to memory:', err);
+  }
+}
+
+function addDeletedLeadIds(ids: string[]) {
+  ids.forEach((id) => memoryDeletedIds.add(id));
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DELETED_LEADS_FILE, JSON.stringify(Array.from(memoryDeletedIds), null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Notice: deleted ids saved to memory:', err);
+  }
+}
 
 function getStoredContent(): { services?: any[]; pricing?: any[] } | null {
   try {
@@ -126,36 +162,40 @@ function saveStoredWorkspaceAuth(token: string, email: string) {
 
 // Helpers to read/write persistent files
 function getStoredLeads(): LeadData[] {
+  const deleted = getDeletedLeadIds();
   try {
     if (fs.existsSync(LEADS_FILE)) {
       const data = fs.readFileSync(LEADS_FILE, 'utf-8');
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        memoryLeads = parsed;
-        return parsed;
+      if (Array.isArray(parsed)) {
+        memoryLeads = parsed.filter((l) => l && l.id && !deleted.has(l.id));
+        return memoryLeads;
       }
-    } else if (isVercel) {
+    }
+    if (isVercel) {
       const bundled = path.join(process.cwd(), 'data', 'leads.json');
       if (fs.existsSync(bundled)) {
         const data = fs.readFileSync(bundled, 'utf-8');
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryLeads = parsed;
-          return parsed;
+        if (Array.isArray(parsed)) {
+          memoryLeads = parsed.filter((l) => l && l.id && !deleted.has(l.id));
+          return memoryLeads;
         }
       }
     }
   } catch (err) {
     console.error('Error reading leads file:', err);
   }
-  return memoryLeads;
+  return memoryLeads.filter((l) => l && l.id && !deleted.has(l.id));
 }
 
 function saveStoredLeads(leads: LeadData[]) {
-  memoryLeads = leads;
+  const deleted = getDeletedLeadIds();
+  const cleaned = leads.filter((l) => l && l.id && !deleted.has(l.id));
+  memoryLeads = cleaned;
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(LEADS_FILE, JSON.stringify(leads, null, 2), 'utf-8');
+    fs.writeFileSync(LEADS_FILE, JSON.stringify(cleaned, null, 2), 'utf-8');
   } catch (err) {
     console.warn('Notice: leads saved to memory cache:', err);
   }
@@ -892,6 +932,8 @@ async function dispatchBookingEmails(lead: LeadData, agencyConfig: AgencySiteCon
 
   // Delete all leads / clear database
   app.delete(['/api/leads', '/leads'], (req: Request, res: Response) => {
+    const current = getStoredLeads();
+    addDeletedLeadIds(current.map((l) => l.id));
     saveStoredLeads([]);
     res.json({ success: true, count: 0 });
   });
@@ -899,10 +941,59 @@ async function dispatchBookingEmails(lead: LeadData, agencyConfig: AgencySiteCon
   // Delete lead
   app.delete(['/api/leads/:id', '/leads/:id'], (req: Request, res: Response) => {
     const { id } = req.params;
+    addDeletedLeadId(id);
     let leads = getStoredLeads();
     leads = leads.filter((l) => l.id !== id);
     saveStoredLeads(leads);
     res.json({ success: true });
+  });
+
+  // Bidirectional smart sync endpoint for leads
+  app.post(['/api/leads/sync', '/leads/sync'], (req: Request, res: Response) => {
+    try {
+      const { clientLeads = [], deletedIds = [] } = req.body;
+      if (Array.isArray(deletedIds) && deletedIds.length > 0) {
+        addDeletedLeadIds(deletedIds);
+      }
+
+      const deleted = getDeletedLeadIds();
+      let serverLeads = getStoredLeads();
+
+      // If client sent leads, merge any that don't exist on server and aren't deleted
+      if (Array.isArray(clientLeads) && clientLeads.length > 0) {
+        const serverMap = new Map<string, LeadData>(serverLeads.map((l) => [l.id, l]));
+        let modified = false;
+
+        for (const cl of clientLeads) {
+          if (cl && cl.id && !deleted.has(cl.id)) {
+            const existing = serverMap.get(cl.id);
+            if (!existing) {
+              serverMap.set(cl.id, cl);
+              modified = true;
+            } else if (cl.status === 'confirmado' && existing.status !== 'confirmado') {
+              serverMap.set(cl.id, { ...existing, ...cl });
+              modified = true;
+            }
+          }
+        }
+
+        if (modified) {
+          serverLeads = Array.from(serverMap.values()).sort(
+            (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+          );
+          saveStoredLeads(serverLeads);
+        }
+      }
+
+      res.json({
+        success: true,
+        leads: serverLeads,
+        deletedIds: Array.from(deleted),
+      });
+    } catch (err: any) {
+      console.error('Error in leads sync:', err);
+      res.status(500).json({ error: err.message || 'Error en sincronización de reservas' });
+    }
   });
 
   // Resend confirmation email to client

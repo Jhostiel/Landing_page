@@ -268,7 +268,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setEmailSent(true);
       setAdminNotified(true);
 
-      const updatedLeads = [newLead, ...storedLeads.filter((l) => l.id !== newLead.id)];
+      const deletedSet = new Set<string>(
+        JSON.parse(localStorage.getItem('infinity_deleted_lead_ids') || '[]')
+      );
+      deletedSet.delete(newLead.id);
+      localStorage.setItem('infinity_deleted_lead_ids', JSON.stringify(Array.from(deletedSet)));
+
+      const cleanStored = storedLeads.filter((l) => l && l.id && !deletedSet.has(l.id) && l.id !== newLead.id);
+      const updatedLeads = [newLead, ...cleanStored];
       localStorage.setItem('infinity_leads', JSON.stringify(updatedLeads));
       setStoredLeads(updatedLeads);
 
