@@ -1,5 +1,45 @@
 [
   {
+    "id": "log_1789040479827_ukvi",
+    "timestamp": 1789040479827,
+    "type": "admin_alert",
+    "recipient": "infinityimpactagency@gmail.com",
+    "title": "Alerta: Cita agendada por Cliente Prueba",
+    "message": "Lead Cliente Prueba enviado a la bandeja de infinityimpactagency@gmail.com.",
+    "status": "enviado",
+    "leadId": "lead_1789040477829_azo9"
+  },
+  {
+    "id": "log_1789040478809_nh6y",
+    "timestamp": 1789040478809,
+    "type": "client_confirmation",
+    "recipient": "cliente.prueba@gmail.com",
+    "title": "Confirmación enviada (Gmail SMTP) a Cliente Prueba",
+    "message": "Correo oficial enviado desde infinityimpactagency@gmail.com con botón interactivo de confirmación.",
+    "status": "enviado",
+    "leadId": "lead_1789040477829_azo9"
+  },
+  {
+    "id": "log_1789040135320_k64h",
+    "timestamp": 1789040135320,
+    "type": "admin_alert",
+    "recipient": "infinityimpactagency@gmail.com",
+    "title": "Alerta: Cita agendada por Test User",
+    "message": "Lead Test User enviado a la bandeja de infinityimpactagency@gmail.com.",
+    "status": "enviado",
+    "leadId": "lead_1789040133620_g0rt"
+  },
+  {
+    "id": "log_1789040134560_4v49",
+    "timestamp": 1789040134560,
+    "type": "client_confirmation",
+    "recipient": "test@example.com",
+    "title": "Confirmación enviada (Gmail SMTP) a Test User",
+    "message": "Correo oficial enviado desde infinityimpactagency@gmail.com con botón interactivo de confirmación.",
+    "status": "enviado",
+    "leadId": "lead_1789040133620_g0rt"
+  },
+  {
     "id": "log_1788623562145_lm8s",
     "timestamp": 1788623562145,
     "type": "admin_alert",

@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { generateClientConfirmationEmailHtml, generateAdminNotificationEmailHtml } from './src/emailTemplates';
@@ -12,7 +11,30 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
-const DATA_DIR = path.join(process.cwd(), 'data');
+
+// CORS & Preflight handling
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// JSON Body Parser at root level
+app.use(express.json());
+
+// Detect Vercel / serverless environment
+const isVercel = Boolean(
+  process.env.VERCEL ||
+  process.env.VERCEL_ENV ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME
+);
+
+// On Vercel, process.cwd() is read-only so /tmp must be used for dynamic file writing
+const DATA_DIR = isVercel ? path.join('/tmp', 'infinity_data') : path.join(process.cwd(), 'data');
 const LEADS_FILE = path.join(DATA_DIR, 'leads.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'agency_config.json');
 const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
@@ -20,26 +42,47 @@ const LOGS_FILE = path.join(DATA_DIR, 'notification_logs.json');
 const WORKSPACE_TOKEN_FILE = path.join(DATA_DIR, 'workspace_token.json');
 
 // Ensure data folder exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Notice: DATA_DIR creation check:', e);
 }
+
+// In-memory fallbacks to guarantee 100% serverless resilience even if filesystem is read-only
+let memoryLeads: LeadData[] = [];
+let memoryConfig: AgencySiteConfig = DEFAULT_AGENCY_CONFIG;
+let memoryContent: { services?: any[]; pricing?: any[] } | null = null;
+let memoryLogs: any[] = [];
+let memoryWorkspaceToken: { token: string | null; email: string | null } = {
+  token: null,
+  email: 'infinityimpactagency@gmail.com',
+};
 
 function getStoredContent(): { services?: any[]; pricing?: any[] } | null {
   try {
     if (fs.existsSync(CONTENT_FILE)) {
       return JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf-8'));
+    } else if (isVercel) {
+      const bundled = path.join(process.cwd(), 'data', 'content.json');
+      if (fs.existsSync(bundled)) {
+        return JSON.parse(fs.readFileSync(bundled, 'utf-8'));
+      }
     }
   } catch (err) {
     console.error('Error reading content file:', err);
   }
-  return null;
+  return memoryContent;
 }
 
 function saveStoredContent(content: { services?: any[]; pricing?: any[] }) {
+  memoryContent = content;
   try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(CONTENT_FILE, JSON.stringify(content, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error saving content file:', err);
+    console.warn('Notice: content saved to memory cache:', err);
   }
 }
 
@@ -51,22 +94,33 @@ function getStoredWorkspaceAuth(): { token: string | null; email: string | null 
         token: data.token || null,
         email: data.email || 'infinityimpactagency@gmail.com',
       };
+    } else if (isVercel) {
+      const bundled = path.join(process.cwd(), 'data', 'workspace_token.json');
+      if (fs.existsSync(bundled)) {
+        const data = JSON.parse(fs.readFileSync(bundled, 'utf-8'));
+        return {
+          token: data.token || null,
+          email: data.email || 'infinityimpactagency@gmail.com',
+        };
+      }
     }
   } catch (e) {
     console.error('Error reading workspace token file:', e);
   }
-  return { token: null, email: 'infinityimpactagency@gmail.com' };
+  return memoryWorkspaceToken;
 }
 
 function saveStoredWorkspaceAuth(token: string, email: string) {
+  memoryWorkspaceToken = { token, email };
   try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(
       WORKSPACE_TOKEN_FILE,
       JSON.stringify({ token, email, updatedAt: Date.now() }, null, 2),
       'utf-8'
     );
   } catch (e) {
-    console.error('Error saving workspace auth file:', e);
+    console.warn('Notice: workspace auth saved to memory cache:', e);
   }
 }
 
@@ -75,19 +129,35 @@ function getStoredLeads(): LeadData[] {
   try {
     if (fs.existsSync(LEADS_FILE)) {
       const data = fs.readFileSync(LEADS_FILE, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        memoryLeads = parsed;
+        return parsed;
+      }
+    } else if (isVercel) {
+      const bundled = path.join(process.cwd(), 'data', 'leads.json');
+      if (fs.existsSync(bundled)) {
+        const data = fs.readFileSync(bundled, 'utf-8');
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          memoryLeads = parsed;
+          return parsed;
+        }
+      }
     }
   } catch (err) {
     console.error('Error reading leads file:', err);
   }
-  return [];
+  return memoryLeads;
 }
 
 function saveStoredLeads(leads: LeadData[]) {
+  memoryLeads = leads;
   try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(LEADS_FILE, JSON.stringify(leads, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error saving leads file:', err);
+    console.warn('Notice: leads saved to memory cache:', err);
   }
 }
 
@@ -95,19 +165,35 @@ function getStoredConfig(): AgencySiteConfig {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const data = fs.readFileSync(CONFIG_FILE, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        memoryConfig = { ...DEFAULT_AGENCY_CONFIG, ...parsed };
+        return memoryConfig;
+      }
+    } else if (isVercel) {
+      const bundled = path.join(process.cwd(), 'data', 'agency_config.json');
+      if (fs.existsSync(bundled)) {
+        const data = fs.readFileSync(bundled, 'utf-8');
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object') {
+          memoryConfig = { ...DEFAULT_AGENCY_CONFIG, ...parsed };
+          return memoryConfig;
+        }
+      }
     }
   } catch (err) {
     console.error('Error reading config file:', err);
   }
-  return DEFAULT_AGENCY_CONFIG;
+  return memoryConfig;
 }
 
 function saveStoredConfig(config: AgencySiteConfig) {
+  memoryConfig = config;
   try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Error saving config file:', err);
+    console.warn('Notice: config saved to memory cache:', err);
   }
 }
 
@@ -116,13 +202,22 @@ function logNotificationServer(item: any) {
     let logs: any[] = [];
     if (fs.existsSync(LOGS_FILE)) {
       logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf-8'));
+    } else {
+      logs = memoryLogs;
     }
-    logs.unshift({
+    const newLog = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       timestamp: Date.now(),
       ...item,
-    });
-    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs.slice(0, 100), null, 2), 'utf-8');
+    };
+    logs.unshift(newLog);
+    memoryLogs = logs.slice(0, 100);
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(LOGS_FILE, JSON.stringify(memoryLogs, null, 2), 'utf-8');
+    } catch (e) {
+      // Ignored for serverless
+    }
   } catch (e) {
     console.error('Error saving notification log:', e);
   }
@@ -237,47 +332,91 @@ async function sendViaGmailApi(token: string, to: string, subject: string, html:
   return await res.json();
 }
 
-// Nodemailer transport setup
-async function createMailTransporter() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
-  const user = (process.env.SMTP_USER || process.env.GMAIL_USER || 'infinityimpactagency@gmail.com').trim();
-  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+// Resend API Transport (ideal for Vercel / serverless deployments)
+async function sendViaResend(
+  apiKey: string,
+  to: string,
+  subject: string,
+  html: string,
+  options?: { fromName?: string; fromEmail?: string }
+) {
+  const fromName = options?.fromName || 'Infinity Impact Agency';
+  // Use verified sender address or Resend onboarding sandbox
+  const fromEmail = options?.fromEmail || process.env.RESEND_FROM || 'onboarding@resend.dev';
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey.trim()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${fromName} <${fromEmail}>`,
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(`Resend HTTP ${res.status}: ${errorBody}`);
+  }
+  return await res.json();
+}
+
+// Nodemailer transport setup (Gmail / Custom SMTP) with dual-port fallback (465 SSL, fallback 587 STARTTLS)
+function createMailTransporter(agencyConfig?: AgencySiteConfig, forcePort?: number) {
+  const host = process.env.SMTP_HOST || agencyConfig?.notifications?.smtpHost || 'smtp.gmail.com';
+  const port = forcePort || (process.env.SMTP_PORT
+    ? parseInt(process.env.SMTP_PORT, 10)
+    : (agencyConfig?.notifications?.smtpPort || 465));
+  const user = (
+    process.env.SMTP_USER ||
+    process.env.GMAIL_USER ||
+    agencyConfig?.notifications?.smtpUser ||
+    'infinityimpactagency@gmail.com'
+  ).trim();
+
+  const rawPass =
+    process.env.SMTP_PASS ||
+    process.env.GMAIL_APP_PASSWORD ||
+    agencyConfig?.notifications?.smtpPass;
   const pass = rawPass ? rawPass.replace(/\s+/g, '') : undefined;
 
   if (pass) {
-    if (host.includes('gmail.com')) {
-      return nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass },
-      });
-    }
+    const isSecure = port === 465;
     return nodemailer.createTransport({
       host,
       port,
-      secure: port === 465,
+      secure: isSecure,
       auth: { user, pass },
+      pool: false,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
       tls: { rejectUnauthorized: false },
     });
   }
 
-  // If no SMTP_PASS provided, create an ethereal test account for local dev / preview fallback
+  return null;
+}
+
+// Resilient mail sending: tries port 465 SSL first, then automatically falls back to 587 STARTTLS
+async function sendMailWithRetry(mailOptions: any, agencyConfig?: AgencySiteConfig) {
+  const transporter465 = createMailTransporter(agencyConfig, 465);
+  if (!transporter465) {
+    throw new Error('Credenciales SMTP no configuradas (falta SMTP_PASS o GMAIL_APP_PASSWORD).');
+  }
+
   try {
-    const testAccount = await nodemailer.createTestAccount();
-    return nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-  } catch (e) {
-    return nodemailer.createTransport({
-      streamTransport: true,
-      newline: 'windows',
-    });
+    return await transporter465.sendMail(mailOptions);
+  } catch (err465: any) {
+    console.warn('[SMTP] Puerto 465 falló (' + err465.message + '), intentando puerto 587 STARTTLS de respaldo...');
+    const transporter587 = createMailTransporter(agencyConfig, 587);
+    if (transporter587) {
+      return await transporter587.sendMail(mailOptions);
+    }
+    throw err465;
   }
 }
 
@@ -308,154 +447,239 @@ async function dispatchBookingEmails(lead: LeadData, agencyConfig: AgencySiteCon
 
   let clientEmailSent = false;
   let adminEmailSent = false;
-  let clientPreviewUrl: string | undefined;
+  let clientPreviewUrl: string | undefined = `/api/preview-email/${lead.id}`;
+  let deliveryMethod = 'none';
 
-  try {
-    const fromAddress = process.env.SMTP_FROM || `"${agencyConfig.agencyName}" <infinityimpactagency@gmail.com>`;
-    const adminEmail = agencyConfig.notifications.adminEmail || 'infinityimpactagency@gmail.com';
+  const fromAddress = process.env.SMTP_FROM || `"${agencyConfig.agencyName}" <infinityimpactagency@gmail.com>`;
+  const adminEmail = agencyConfig.notifications.adminEmail || 'infinityimpactagency@gmail.com';
 
-    // A. Priority 1: Send via official Google Workspace / Gmail API if authenticated
-    if (serverWorkspaceToken) {
-      try {
-        if (lead.email) {
-          await sendViaGmailApi(
-            serverWorkspaceToken,
-            lead.email,
-            `✅ Confirmación: Tu Llamada Estratégica con ${agencyConfig.agencyName}`,
-            clientHtml
-          );
-          clientEmailSent = true;
-          logNotificationServer({
-            type: 'client_confirmation',
-            recipient: lead.email,
-            title: `Confirmación enviada (Gmail API) a ${lead.name}`,
-            message: `Correo oficial con branding enviado desde infinityimpactagency@gmail.com a ${lead.email}`,
-            status: 'enviado',
-            leadId: lead.id,
-          });
-        }
+  const resendApiKey = process.env.RESEND_API_KEY || agencyConfig.notifications?.resendApiKey;
+  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || agencyConfig.notifications?.smtpPass;
 
-        if (adminEmail) {
-          await sendViaGmailApi(
-            serverWorkspaceToken,
-            adminEmail,
-            `🔔 [NUEVA CITA AGENDADA] ${lead.name} - ${lead.businessName || 'Nuevo Cliente'} (${lead.date} ${lead.timeSlot} hrs)`,
-            adminHtml
-          );
-          adminEmailSent = true;
-          logNotificationServer({
-            type: 'admin_alert',
-            recipient: adminEmail,
-            title: `Alerta enviada a ${adminEmail}`,
-            message: `Cita agendada por ${lead.name} enviada directamente a la bandeja de ${adminEmail}`,
-            status: 'enviado',
-            leadId: lead.id,
-          });
-        }
-
-        return {
-          clientEmailSent,
-          adminEmailSent,
-          confirmUrl,
-        };
-      } catch (gmailErr: any) {
-        console.warn('Gmail API dispatch encountered an issue, trying SMTP transporter:', gmailErr.message);
-      }
-    }
-
-    // B. Priority 2: Send via SMTP Transporter (smtp.gmail.com:465)
-    const transporter = await createMailTransporter();
-
-    // 1. Send to Client
-    if (lead.email) {
-      const clientInfo = await transporter.sendMail({
-        from: fromAddress,
-        to: lead.email,
-        subject: `✅ Confirmación: Tu Llamada Estratégica con ${agencyConfig.agencyName}`,
-        html: clientHtml,
-      });
-
-      clientEmailSent = true;
-      const preview = nodemailer.getTestMessageUrl(clientInfo);
-      if (preview) {
-        clientPreviewUrl = preview;
+  // A. Priority 1: Send via official Google Workspace / Gmail API if authenticated
+  if (serverWorkspaceToken) {
+    try {
+      if (lead.email) {
+        await sendViaGmailApi(
+          serverWorkspaceToken,
+          lead.email,
+          `✅ Confirmación: Tu Llamada Estratégica con ${agencyConfig.agencyName}`,
+          clientHtml
+        );
+        clientEmailSent = true;
       }
 
+      if (adminEmail) {
+        await sendViaGmailApi(
+          serverWorkspaceToken,
+          adminEmail,
+          `🔔 [NUEVA CITA AGENDADA] ${lead.name} - ${lead.businessName || 'Nuevo Cliente'} (${lead.date} ${lead.timeSlot} hrs)`,
+          adminHtml
+        );
+        adminEmailSent = true;
+      }
+
+      deliveryMethod = 'google_workspace_api';
       logNotificationServer({
         type: 'client_confirmation',
         recipient: lead.email,
-        title: `Confirmación enviada a ${lead.name}`,
-        message: `Correo oficial enviado desde infinityimpactagency@gmail.com con botón de confirmación.`,
+        title: `Confirmación enviada (Workspace API) a ${lead.name}`,
+        message: `Correo oficial con branding enviado desde infinityimpactagency@gmail.com a ${lead.email}`,
         status: 'enviado',
         leadId: lead.id,
       });
+
+      return {
+        clientEmailSent,
+        adminEmailSent,
+        confirmUrl,
+        clientPreviewUrl,
+        deliveryMethod,
+      };
+    } catch (gmailErr: any) {
+      console.warn('[Email Dispatch] Workspace API warning, evaluating fallbacks:', gmailErr.message);
     }
+  }
 
-    // 2. Send to Admin with official iCalendar (.ics) invite attachment
-    if (adminEmail) {
-      const formatIcsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-      const startIso = `${lead.date}T${lead.timeSlot}:00`;
-      const startDate = new Date(startIso);
-      const durationMin = agencyConfig.hoursConfig.slotDurationMinutes || 45;
-      const endDate = new Date(startDate.getTime() + durationMin * 60000);
+  // B. Priority 2: Send via Resend API (HTTP REST, zero port restrictions on Vercel)
+  if (resendApiKey) {
+    try {
+      if (lead.email) {
+        await sendViaResend(
+          resendApiKey,
+          lead.email,
+          `✅ Confirmación: Tu Llamada Estratégica con ${agencyConfig.agencyName}`,
+          clientHtml,
+          {
+            fromName: agencyConfig.agencyName,
+            fromEmail: agencyConfig.notifications?.resendFromEmail,
+          }
+        );
+        clientEmailSent = true;
+      }
 
-      const icsContent = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'PRODID:-//Infinity Impact Agency//Booking System//ES',
-        'CALSCALE:GREGORIAN',
-        'METHOD:REQUEST',
-        'BEGIN:VEVENT',
-        `UID:infinity_${lead.id}@infinityimpactagency.com`,
-        `DTSTAMP:${formatIcsDate(new Date())}`,
-        `DTSTART:${formatIcsDate(startDate)}`,
-        `DTEND:${formatIcsDate(endDate)}`,
-        `SUMMARY:Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`,
-        `DESCRIPTION:Sesión Estratégica de Crecimiento con IA.\\nCliente: ${lead.name}\\nEmpresa: ${lead.businessName || 'No indicada'}\\nWhatsApp: ${lead.phone}\\nEmail: ${lead.email}\\nServicio: ${lead.serviceInterest || 'Consultoría IA'}\\nSala Meet: ${meetingLink}`,
-        `LOCATION:${meetingLink}`,
-        'ORGANIZER;CN=Infinity Impact Agency:mailto:infinityimpactagency@gmail.com',
-        'ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Infinity Impact:mailto:infinityimpactagency@gmail.com',
-        `ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=${lead.name}:mailto:${lead.email}`,
-        'STATUS:CONFIRMED',
-        'BEGIN:VALARM',
-        'TRIGGER:-PT15M',
-        'ACTION:DISPLAY',
-        'DESCRIPTION:Recordatorio de Llamada Estratégica IA',
-        'END:VALARM',
-        'END:VEVENT',
-        'END:VCALENDAR',
-      ].join('\r\n');
+      if (adminEmail) {
+        await sendViaResend(
+          resendApiKey,
+          adminEmail,
+          `🔔 [NUEVA CITA AGENDADA] ${lead.name} - ${lead.businessName || 'Nuevo Cliente'} (${lead.date} ${lead.timeSlot} hrs)`,
+          adminHtml,
+          {
+            fromName: agencyConfig.agencyName,
+            fromEmail: agencyConfig.notifications?.resendFromEmail,
+          }
+        );
+        adminEmailSent = true;
+      }
 
-      await transporter.sendMail({
-        from: fromAddress,
-        to: adminEmail,
-        subject: `🔔 [NUEVA CITA AGENDADA] ${lead.name} - ${lead.businessName || 'Nuevo Cliente'} (${lead.date} ${lead.timeSlot} hrs)`,
-        html: adminHtml,
-        icalEvent: {
-          filename: `cita-${lead.id}.ics`,
-          method: 'REQUEST',
-          content: icsContent,
-        },
-      });
-
-      adminEmailSent = true;
+      deliveryMethod = 'resend_api';
       logNotificationServer({
-        type: 'admin_alert',
-        recipient: adminEmail,
-        title: `Alerta: Cita agendada por ${lead.name}`,
-        message: `Lead ${lead.businessName || lead.name} enviado a la bandeja de ${adminEmail}.`,
+        type: 'client_confirmation',
+        recipient: lead.email,
+        title: `Confirmación enviada (Resend API) a ${lead.name}`,
+        message: `Correo oficial entregado a ${lead.email} y copia de alerta a ${adminEmail} vía Resend API.`,
         status: 'enviado',
         leadId: lead.id,
       });
+
+      return {
+        clientEmailSent,
+        adminEmailSent,
+        confirmUrl,
+        clientPreviewUrl,
+        deliveryMethod,
+      };
+    } catch (resendErr: any) {
+      console.warn('[Email Dispatch] Resend API error:', resendErr.message);
     }
-  } catch (err: any) {
-    console.error('Error in dispatchBookingEmails:', err);
+  }
+
+  // C. Priority 3: Send via Gmail SMTP Transporter (Dual-Port 465 SSL / 587 STARTTLS)
+  if (smtpPass) {
+    try {
+      // 1. Send to Client
+      if (lead.email) {
+        await sendMailWithRetry({
+          from: fromAddress,
+          to: lead.email,
+          subject: `✅ Confirmación: Tu Llamada Estratégica con ${agencyConfig.agencyName}`,
+          html: clientHtml,
+        }, agencyConfig);
+        clientEmailSent = true;
+
+        logNotificationServer({
+          type: 'client_confirmation',
+          recipient: lead.email,
+          title: `Confirmación enviada (Gmail SMTP) a ${lead.name}`,
+          message: `Correo oficial enviado desde infinityimpactagency@gmail.com con botón interactivo de confirmación.`,
+          status: 'enviado',
+          leadId: lead.id,
+        });
+      }
+
+      // 2. Send to Admin with official iCalendar (.ics) invite attachment
+      if (adminEmail) {
+        const formatIcsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const startIso = `${lead.date}T${lead.timeSlot}:00`;
+        const startDate = new Date(startIso);
+        const durationMin = agencyConfig.hoursConfig?.slotDurationMinutes || 45;
+        const endDate = new Date(startDate.getTime() + durationMin * 60000);
+
+        const icsContent = [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//Infinity Impact Agency//Booking System//ES',
+          'CALSCALE:GREGORIAN',
+          'METHOD:REQUEST',
+          'BEGIN:VEVENT',
+          `UID:infinity_${lead.id}@infinityimpactagency.com`,
+          `DTSTAMP:${formatIcsDate(new Date())}`,
+          `DTSTART:${formatIcsDate(startDate)}`,
+          `DTEND:${formatIcsDate(endDate)}`,
+          `SUMMARY:Llamada Estratégica IA: ${lead.name} (${lead.businessName || 'Empresa'}) - Infinity Impact`,
+          `DESCRIPTION:Sesión Estratégica de Crecimiento con IA.\\nCliente: ${lead.name}\\nEmpresa: ${lead.businessName || 'No indicada'}\\nWhatsApp: ${lead.phone}\\nEmail: ${lead.email}\\nServicio: ${lead.serviceInterest || 'Consultoría IA'}\\nSala Meet: ${meetingLink}`,
+          `LOCATION:${meetingLink}`,
+          'ORGANIZER;CN=Infinity Impact Agency:mailto:infinityimpactagency@gmail.com',
+          'ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Infinity Impact:mailto:infinityimpactagency@gmail.com',
+          `ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=${lead.name}:mailto:${lead.email}`,
+          'STATUS:CONFIRMED',
+          'BEGIN:VALARM',
+          'TRIGGER:-PT15M',
+          'ACTION:DISPLAY',
+          'DESCRIPTION:Recordatorio de Llamada Estratégica IA',
+          'END:VALARM',
+          'END:VEVENT',
+          'END:VCALENDAR',
+        ].join('\r\n');
+
+        await sendMailWithRetry({
+          from: fromAddress,
+          to: adminEmail,
+          subject: `🔔 [NUEVA CITA AGENDADA] ${lead.name} - ${lead.businessName || 'Nuevo Cliente'} (${lead.date} ${lead.timeSlot} hrs)`,
+          html: adminHtml,
+          icalEvent: {
+            filename: `cita-${lead.id}.ics`,
+            method: 'REQUEST',
+            content: icsContent,
+          },
+        }, agencyConfig);
+
+        adminEmailSent = true;
+        logNotificationServer({
+          type: 'admin_alert',
+          recipient: adminEmail,
+          title: `Alerta: Cita agendada por ${lead.name}`,
+          message: `Lead ${lead.businessName || lead.name} enviado a la bandeja de ${adminEmail}.`,
+          status: 'enviado',
+          leadId: lead.id,
+        });
+      }
+
+      deliveryMethod = 'gmail_smtp';
+    } catch (smtpErr: any) {
+      console.error('[Email Dispatch] SMTP error:', smtpErr.message);
+      logNotificationServer({
+        type: 'client_confirmation',
+        recipient: lead.email,
+        title: `Error al enviar correo (SMTP): ${lead.name}`,
+        message: `Fallo SMTP: ${smtpErr.message}`,
+        status: 'error',
+        leadId: lead.id,
+      });
+    }
+  }
+
+  // D. Webhook Dispatch (Zapier, Make, Google Apps Script, Discord, Telegram)
+  const webhookUrl = process.env.WEBHOOK_URL || agencyConfig.notifications?.webhookUrl;
+  if (webhookUrl) {
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'new_booking',
+          agency: agencyConfig.agencyName,
+          lead,
+          confirmUrl,
+          meetingLink,
+          deliveryMethod,
+          timestamp: Date.now(),
+        }),
+      });
+      console.log('[Email Dispatch] Webhook notification delivered to', webhookUrl);
+    } catch (whErr: any) {
+      console.warn('[Email Dispatch] Webhook notification failed:', whErr.message);
+    }
+  }
+
+  if (!clientEmailSent && !adminEmailSent) {
+    console.warn('[Email Dispatch] Notice: No active SMTP_PASS or RESEND_API_KEY configured.');
     logNotificationServer({
       type: 'client_confirmation',
       recipient: lead.email,
-      title: `Error al enviar correo a ${lead.name}`,
-      message: `Detalle: ${err.message || String(err)}`,
-      status: 'error',
+      title: `⚠️ Credenciales de correo no configuradas`,
+      message: `La cita fue agendada pero no se pudo enviar correo en vivo porque falta SMTP_PASS o RESEND_API_KEY en Vercel o en /admind.`,
+      status: 'pendiente_configuracion',
       leadId: lead.id,
     });
   }
@@ -465,28 +689,26 @@ async function dispatchBookingEmails(lead: LeadData, agencyConfig: AgencySiteCon
     adminEmailSent,
     clientPreviewUrl,
     confirmUrl,
+    deliveryMethod: clientEmailSent ? deliveryMethod : 'none',
   };
 }
 
-async function startServer() {
-  app.use(express.json());
+// -------------------------------------------------------------
+// API ROUTES (MOUNTED DIRECTLY FOR STANDALONE & VERCEL SERVERLESS)
+// -------------------------------------------------------------
 
-  // -------------------------------------------------------------
-  // API ROUTES (MUST COME FIRST BEFORE VITE)
-  // -------------------------------------------------------------
-
-  app.get('/api/health', (req: Request, res: Response) => {
+  app.get(['/api/health', '/health'], (req: Request, res: Response) => {
     res.json({ status: 'ok', agency: 'Infinity Impact Agency', timestamp: Date.now() });
   });
 
   // Get all leads
-  app.get('/api/leads', (req: Request, res: Response) => {
+  app.get(['/api/leads', '/leads'], (req: Request, res: Response) => {
     const leads = getStoredLeads();
     res.json({ leads });
   });
 
   // Create new booking / lead and auto-dispatch emails
-  app.post('/api/leads', async (req: Request, res: Response) => {
+  app.post(['/api/leads', '/leads'], async (req: Request, res: Response) => {
     try {
       const {
         name,
@@ -539,6 +761,7 @@ async function startServer() {
         adminNotified: emailResult.adminEmailSent,
         clientPreviewUrl: emailResult.clientPreviewUrl,
         confirmUrl: emailResult.confirmUrl,
+        deliveryMethod: emailResult.deliveryMethod,
       });
     } catch (err: any) {
       console.error('Error creating lead:', err);
@@ -547,7 +770,7 @@ async function startServer() {
   });
 
   // Confirm booking (triggered when client clicks "CONFIRMAR MI CITA" in email)
-  app.post('/api/leads/:id/confirm', async (req: Request, res: Response) => {
+  app.post(['/api/leads/:id/confirm', '/leads/:id/confirm'], async (req: Request, res: Response) => {
     const { id } = req.params;
     const leads = getStoredLeads();
     const leadIndex = leads.findIndex((l) => l.id === id);
@@ -610,7 +833,7 @@ async function startServer() {
   });
 
   // Explicitly schedule an existing lead to Google Calendar
-  app.post('/api/leads/:id/schedule-calendar', async (req: Request, res: Response) => {
+  app.post(['/api/leads/:id/schedule-calendar', '/leads/:id/schedule-calendar'], async (req: Request, res: Response) => {
     const { id } = req.params;
     const leads = getStoredLeads();
     const leadIndex = leads.findIndex((l) => l.id === id);
@@ -651,7 +874,7 @@ async function startServer() {
   });
 
   // Update lead (status, notes, etc)
-  app.patch('/api/leads/:id', (req: Request, res: Response) => {
+  app.patch(['/api/leads/:id', '/leads/:id'], (req: Request, res: Response) => {
     const { id } = req.params;
     const updates = req.body;
     const leads = getStoredLeads();
@@ -668,13 +891,13 @@ async function startServer() {
   });
 
   // Delete all leads / clear database
-  app.delete('/api/leads', (req: Request, res: Response) => {
+  app.delete(['/api/leads', '/leads'], (req: Request, res: Response) => {
     saveStoredLeads([]);
     res.json({ success: true, count: 0 });
   });
 
   // Delete lead
-  app.delete('/api/leads/:id', (req: Request, res: Response) => {
+  app.delete(['/api/leads/:id', '/leads/:id'], (req: Request, res: Response) => {
     const { id } = req.params;
     let leads = getStoredLeads();
     leads = leads.filter((l) => l.id !== id);
@@ -683,7 +906,7 @@ async function startServer() {
   });
 
   // Resend confirmation email to client
-  app.post('/api/leads/:id/resend', async (req: Request, res: Response) => {
+  app.post(['/api/leads/:id/resend', '/leads/:id/resend'], async (req: Request, res: Response) => {
     const { id } = req.params;
     const leads = getStoredLeads();
     const lead = leads.find((l) => l.id === id);
@@ -703,7 +926,7 @@ async function startServer() {
   });
 
   // Preview full HTML email in browser
-  app.get('/api/preview-email/:id', (req: Request, res: Response) => {
+  app.get(['/api/preview-email/:id', '/preview-email/:id'], (req: Request, res: Response) => {
     const { id } = req.params;
     const leads = getStoredLeads();
     const lead = leads.find((l) => l.id === id) || {
@@ -740,12 +963,12 @@ async function startServer() {
   });
 
   // Agency Config GET / POST
-  app.get('/api/config', (req: Request, res: Response) => {
+  app.get(['/api/config', '/config'], (req: Request, res: Response) => {
     res.json({ config: getStoredConfig() });
   });
 
   // Sync Google Workspace token from Admin Dashboard
-  app.post('/api/workspace/sync-token', (req: Request, res: Response) => {
+  app.post(['/api/workspace/sync-token', '/workspace/sync-token'], (req: Request, res: Response) => {
     const { token, email } = req.body;
     if (token) {
       serverWorkspaceToken = token;
@@ -759,39 +982,61 @@ async function startServer() {
   });
 
   // Check email configuration delivery status
-  // Check email configuration delivery status
-  app.get('/api/email-config-status', (req: Request, res: Response) => {
+  app.get(['/api/email-config-status', '/email-config-status'], (req: Request, res: Response) => {
     const config = getStoredConfig();
-    const hasSmtpPass = !!(process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD);
+    const hasSmtpPass = !!(
+      process.env.SMTP_PASS ||
+      process.env.GMAIL_APP_PASSWORD ||
+      config.notifications?.smtpPass
+    );
+    const hasResend = !!(
+      process.env.RESEND_API_KEY ||
+      config.notifications?.resendApiKey
+    );
+    const hasWebhook = !!(
+      process.env.WEBHOOK_URL ||
+      config.notifications?.webhookUrl
+    );
     const hasWorkspaceToken = !!serverWorkspaceToken;
+    const isConfigured = hasWorkspaceToken || hasResend || hasSmtpPass;
+
     res.json({
       senderEmail: 'infinityimpactagency@gmail.com',
       adminRecipient: config.notifications?.adminEmail || 'infinityimpactagency@gmail.com',
       hasSmtpPass,
+      hasResend,
+      hasWebhook,
       hasWorkspaceToken,
-      mode: hasWorkspaceToken ? 'gmail_oauth_api' : (hasSmtpPass ? 'gmail_smtp_live' : 'sandbox_preview'),
+      isConfigured,
+      mode: hasWorkspaceToken
+        ? 'gmail_oauth_api'
+        : hasResend
+        ? 'resend_api'
+        : hasSmtpPass
+        ? 'gmail_smtp_live'
+        : 'unconfigured',
     });
   });
 
-  app.post('/api/config', (req: Request, res: Response) => {
+  app.post(['/api/config', '/config'], (req: Request, res: Response) => {
     const newConfig = req.body;
     saveStoredConfig(newConfig);
     res.json({ success: true, config: newConfig });
   });
 
   // Services & Pricing Content GET / POST
-  app.get('/api/content', (req: Request, res: Response) => {
+  app.get(['/api/content', '/content'], (req: Request, res: Response) => {
     res.json({ content: getStoredContent() });
   });
 
-  app.post('/api/content', (req: Request, res: Response) => {
+  app.post(['/api/content', '/content'], (req: Request, res: Response) => {
     const content = req.body;
     saveStoredContent(content);
     res.json({ success: true, content });
   });
 
   // Persist settings directly into project source files so Git sees them in Pull Requests
-  app.post('/api/admin/save-to-code', (req: Request, res: Response) => {
+  app.post(['/api/admin/save-to-code', '/admin/save-to-code'], (req: Request, res: Response) => {
     try {
       const { config, services, pricing } = req.body;
       if (config) {
@@ -826,7 +1071,7 @@ async function startServer() {
   });
 
   // Notification logs
-  app.get('/api/logs', (req: Request, res: Response) => {
+  app.get(['/api/logs', '/logs'], (req: Request, res: Response) => {
     try {
       if (fs.existsSync(LOGS_FILE)) {
         const logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf-8'));
@@ -838,27 +1083,28 @@ async function startServer() {
     res.json({ logs: [] });
   });
 
-  // Test email endpoint
-  app.post('/api/test-email', async (req: Request, res: Response) => {
+  // Test email endpoint with multi-provider live testing (Resend, Gmail SMTP, Workspace)
+  app.post(['/api/test-email', '/test-email'], async (req: Request, res: Response) => {
     try {
       const config = getStoredConfig();
       const targetEmail = req.body.email || config.notifications.adminEmail || 'infinityimpactagency@gmail.com';
-      const hasSmtpPass = !!(process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD);
+      const resendApiKey = (process.env.RESEND_API_KEY || config.notifications?.resendApiKey)?.trim();
+      const hasSmtpPass = !!(process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || config.notifications?.smtpPass);
       const hasWorkspaceToken = !!serverWorkspaceToken;
 
       const htmlContent = `
         <div style="background-color: #07090e; padding: 30px; font-family: sans-serif; color: #ffffff; border-radius: 12px; max-width: 550px; margin: 0 auto; border: 1px solid #1e293b;">
           <h2 style="color: #06b6d4; margin-top: 0;">⚡ Prueba de Envío Exitosa</h2>
           <p>Este es un correo de prueba enviado desde <strong>${config.agencyName}</strong> (infinityimpactagency@gmail.com).</p>
-          <p>Cada vez que cualquier cliente reserve una cita, el sistema enviará en automático la confirmación con sus datos y botón interactivo directamente a la dirección de correo ingresada por el cliente.</p>
+          <p>El sistema de reservas automáticas está activo y listo para notificar en vivo tanto al cliente como al administrador.</p>
           <div style="margin-top: 20px; padding: 12px; background: #121824; border-radius: 8px; font-size: 12px; color: #10b981;">
-            ✓ Destinatario de esta prueba: <strong>${targetEmail}</strong><br/>
-            ✓ Modo de entrega: ${hasWorkspaceToken ? 'Google Workspace API (En Vivo)' : (hasSmtpPass ? 'Gmail SMTP Autenticado (En Vivo)' : 'Sandbox de Previsualización')}
+            ✓ Destinatario: <strong>${targetEmail}</strong><br/>
+            ✓ Proveedor activo: ${hasWorkspaceToken ? 'Google Workspace API' : resendApiKey ? 'Resend REST API' : hasSmtpPass ? 'Gmail SMTP Autenticado' : 'Sin credenciales'}
           </div>
         </div>
       `;
 
-      // 1. If Google Workspace token active, send via Gmail API
+      // 1. Google Workspace API
       if (serverWorkspaceToken) {
         try {
           await sendViaGmailApi(
@@ -871,43 +1117,84 @@ async function startServer() {
             success: true,
             deliveredLive: true,
             message: `Correo de prueba entregado en vivo a ${targetEmail} vía Google Workspace API`,
+            mode: 'gmail_oauth_api',
           });
         } catch (apiErr: any) {
-          console.warn('Test send via Gmail API failed, trying SMTP transporter:', apiErr.message);
+          console.warn('Test send via Gmail API failed:', apiErr.message);
         }
       }
 
-      // 2. SMTP Transporter
-      const transporter = await createMailTransporter();
-      const fromAddress = process.env.SMTP_FROM || `"${config.agencyName}" <infinityimpactagency@gmail.com>`;
+      // 2. Resend API
+      if (resendApiKey) {
+        try {
+          await sendViaResend(
+            resendApiKey,
+            targetEmail,
+            `🔔 [PRUEBA EN VIVO] Sistema de Envío de ${config.agencyName}`,
+            htmlContent,
+            {
+              fromName: config.agencyName,
+              fromEmail: config.notifications?.resendFromEmail,
+            }
+          );
+          return res.json({
+            success: true,
+            deliveredLive: true,
+            message: `Correo de prueba entregado en vivo a ${targetEmail} vía Resend API`,
+            mode: 'resend_api',
+          });
+        } catch (resendErr: any) {
+          console.warn('Test send via Resend failed:', resendErr.message);
+        }
+      }
 
-      const info = await transporter.sendMail({
-        from: fromAddress,
-        to: targetEmail,
-        subject: `🔔 [PRUEBA OFICIAL] Sistema de Envío de ${config.agencyName}`,
-        html: htmlContent,
-      });
+      // 3. Gmail SMTP Transporter with dual-port fallback (465 SSL, 587 STARTTLS)
+      if (hasSmtpPass) {
+        try {
+          const fromAddress = process.env.SMTP_FROM || `"${config.agencyName}" <infinityimpactagency@gmail.com>`;
+          await sendMailWithRetry({
+            from: fromAddress,
+            to: targetEmail,
+            subject: `🔔 [PRUEBA OFICIAL] Sistema de Envío de ${config.agencyName}`,
+            html: htmlContent,
+          }, config);
 
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      res.json({
-        success: true,
-        deliveredLive: hasSmtpPass,
-        message: hasSmtpPass
-          ? `Correo de prueba entregado en vivo a ${targetEmail} vía Gmail SMTP.`
-          : `Correo generado para ${targetEmail} (en modo sandbox/previsualización).`,
-        previewUrl,
-        mode: hasSmtpPass ? 'live' : 'sandbox',
+          return res.json({
+            success: true,
+            deliveredLive: true,
+            message: `Correo de prueba entregado en vivo a ${targetEmail} vía Gmail SMTP autenticado.`,
+            mode: 'gmail_smtp_live',
+          });
+        } catch (smtpErr: any) {
+          console.error('Test send via SMTP failed:', smtpErr.message);
+          return res.status(400).json({
+            success: false,
+            deliveredLive: false,
+            error: `Error al autenticar o enviar con Gmail SMTP: ${smtpErr.message}`,
+            mode: 'smtp_error',
+          });
+        }
+      }
+
+      // If no credentials configured
+      return res.status(400).json({
+        success: false,
+        deliveredLive: false,
+        error: 'No hay credenciales activas en Vercel. Agrega SMTP_PASS (Contraseña de aplicación de Google) o RESEND_API_KEY en Vercel > Settings > Environment Variables.',
+        mode: 'unconfigured',
       });
     } catch (err: any) {
       console.error('Test email error:', err);
-      res.status(500).json({ error: err.message || 'Error al enviar correo de prueba' });
+      res.status(500).json({ success: false, error: err.message || 'Error al enviar correo de prueba' });
     }
   });
 
-  // -------------------------------------------------------------
-  // VITE / SPA MIDDLEWARE
-  // -------------------------------------------------------------
+// -------------------------------------------------------------
+// VITE / SPA MIDDLEWARE (DEVELOPMENT & STANDALONE CONTAINER RUNNER)
+// -------------------------------------------------------------
+async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -926,6 +1213,11 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-});
+if (!isVercel && process.env.NODE_ENV !== 'test') {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+  });
+}
+
+export default app;
+export { app };

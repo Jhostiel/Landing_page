@@ -49,6 +49,14 @@ export interface AdminNotificationSettings {
   chatSpaceName: string;
   googleCalendarId?: string;
   googleCalendarEmbedUrl?: string;
+  // Delivery credentials (for Vercel & Production deployment)
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  resendApiKey?: string;
+  resendFromEmail?: string;
+  webhookUrl?: string;
 }
 
 export interface AgencySiteConfig {

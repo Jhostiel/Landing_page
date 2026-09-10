@@ -165,6 +165,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string; mode?: string } | null>(null);
+  const [emailConfigStatus, setEmailConfigStatus] = useState<{
+    senderEmail?: string;
+    adminRecipient?: string;
+    hasSmtpPass?: boolean;
+    hasResend?: boolean;
+    hasWebhook?: boolean;
+    hasWorkspaceToken?: boolean;
+    isConfigured?: boolean;
+    mode?: string;
+  } | null>(null);
+  const [copiedVarName, setCopiedVarName] = useState<string | null>(null);
+
+  const fetchEmailConfigStatus = async () => {
+    try {
+      const res = await fetch('/api/email-config-status');
+      if (res.ok) {
+        const data = await res.json();
+        setEmailConfigStatus(data);
+      }
+    } catch (e) {
+      console.warn('Backend email config sync notice:', e);
+    }
+  };
 
   // Lead delete and clear-all modal states
   const [leadToDelete, setLeadToDelete] = useState<LeadData | null>(null);
@@ -227,6 +250,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Auto-refresh when new bookings are created or confirmed
   useEffect(() => {
     fetchBackendLeads();
+    fetchEmailConfigStatus();
 
     const handleBookingEvents = () => {
       try {
@@ -234,6 +258,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         setLeads(freshLeads);
         setLogs(getNotificationLogs());
         fetchBackendLeads();
+        fetchEmailConfigStatus();
       } catch (e) {
         console.error(e);
       }
@@ -2177,6 +2202,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div>✓ <strong>Remitente oficial:</strong> infinityimpactagency@gmail.com (Infinity Impact Agency).</div>
                       <div>✓ <strong>Colores corporativos:</strong> Fondo oscuro (#07090e), acentos cian (#00f0ff) y verde esmeralda (#10b981).</div>
                       <div>✓ <strong>Botón de Confirmación Interactivo:</strong> Incluye el botón directo <span className="text-emerald-300 font-semibold">"CONFIRMAR MI ASISTENCIA"</span> que al hacer clic marca la cita como confirmada automáticamente en tu panel de /admind.</div>
+                    </div>
+                  </div>
+
+                  {/* Vercel Environment Configuration & Diagnostics */}
+                  <div className="p-4 bg-gradient-to-br from-[#0c121e] via-[#0f172a] to-[#0c121e] border border-blue-500/40 rounded-xl space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <div className="flex items-center gap-2 text-white font-bold text-xs">
+                        <span className="text-base">🚀</span>
+                        <span className="uppercase tracking-wider">Estado de Envíos en Vercel (Producción)</span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${
+                        emailConfigStatus?.isConfigured
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                          : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${emailConfigStatus?.isConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                        <span>{emailConfigStatus?.isConfigured ? 'Envíos en Vivo Activos' : 'Requiere Configuración en Vercel'}</span>
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Para que los correos automáticos lleguen tanto al cliente como a ti al reservar en la página desplegada en <strong>Vercel</strong>, el servidor necesita credenciales de despacho. Puedes usar <strong>Gmail SMTP (Gratuito)</strong> o <strong>Resend API</strong>.
+                    </p>
+
+                    {/* Step-by-step instructions */}
+                    <div className="bg-[#090d16] p-3.5 rounded-lg border border-slate-800 text-[11px] space-y-2.5">
+                      <div className="font-semibold text-cyan-300 flex items-center justify-between">
+                        <span>Opción A: Gmail SMTP Oficial (Recomendada y 100% Gratuita)</span>
+                        <a
+                          href="https://myaccount.google.com/apppasswords"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline text-[10px]"
+                        >
+                          <span>Crear contraseña en Google</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
+                      <p className="text-slate-400 text-[10px]">
+                        1. Entra a tu cuenta Google (<strong>infinityimpactagency@gmail.com</strong>) &gt; Seguridad &gt; Verificación en 2 pasos &gt; <strong>Contraseñas de aplicaciones</strong>.<br />
+                        2. Genera una contraseña (nombre: "Vercel Web") y obtendrás 16 letras.<br />
+                        3. En tu proyecto de <strong>Vercel &gt; Settings &gt; Environment Variables</strong> agrega:
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <div className="bg-[#131924] border border-slate-700/80 rounded-lg p-2 flex items-center justify-between">
+                          <div>
+                            <div className="text-[9px] text-slate-400 uppercase font-mono">Nombre de variable:</div>
+                            <div className="font-mono text-cyan-300 text-xs font-bold">SMTP_PASS</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText('SMTP_PASS');
+                              setCopiedVarName('SMTP_PASS');
+                              setTimeout(() => setCopiedVarName(null), 2000);
+                            }}
+                            className="text-[10px] px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded cursor-pointer transition-colors"
+                          >
+                            {copiedVarName === 'SMTP_PASS' ? '¡Copiado!' : 'Copiar'}
+                          </button>
+                        </div>
+
+                        <div className="bg-[#131924] border border-slate-700/80 rounded-lg p-2 flex items-center justify-between">
+                          <div>
+                            <div className="text-[9px] text-slate-400 uppercase font-mono">Nombre de variable:</div>
+                            <div className="font-mono text-cyan-300 text-xs font-bold">SMTP_USER</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText('infinityimpactagency@gmail.com');
+                              setCopiedVarName('SMTP_USER');
+                              setTimeout(() => setCopiedVarName(null), 2000);
+                            }}
+                            className="text-[10px] px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded cursor-pointer transition-colors"
+                          >
+                            {copiedVarName === 'SMTP_USER' ? '¡Copiado!' : 'Copiar'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick credential inputs directly into config */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Contraseña de Aplicación Gmail (16 letras)
+                        </label>
+                        <input
+                          type="password"
+                          value={config.notifications?.smtpPass || ''}
+                          onChange={(e) =>
+                            setConfig({
+                              ...config,
+                              notifications: {
+                                ...config.notifications,
+                                smtpPass: e.target.value,
+                              },
+                            })
+                          }
+                          placeholder="xxxx xxxx xxxx xxxx"
+                          className="w-full bg-[#1b2334] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          API Key de Resend (Alternativa opcional)
+                        </label>
+                        <input
+                          type="password"
+                          value={config.notifications?.resendApiKey || ''}
+                          onChange={(e) =>
+                            setConfig({
+                              ...config,
+                              notifications: {
+                                ...config.notifications,
+                                resendApiKey: e.target.value,
+                              },
+                            })
+                          }
+                          placeholder="re_..."
+                          className="w-full bg-[#1b2334] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-slate-400">
+                        Guarda los cambios arriba con <strong className="text-white">"Guardar Cambios"</strong> para aplicarlos al sistema.
+                      </span>
+                      <a
+                        href="https://vercel.com/dashboard"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/40 text-xs font-semibold transition-colors"
+                      >
+                        <span>Abrir Panel de Vercel</span>
+                        <ExternalLink size={12} />
+                      </a>
                     </div>
                   </div>
 

@@ -1,5 +1,21 @@
 [
   {
+    "id": "lead_1789040133620_g0rt",
+    "name": "Test User",
+    "email": "test@example.com",
+    "phone": "123",
+    "businessName": "",
+    "businessCategory": "General",
+    "serviceInterest": "IA",
+    "notes": "",
+    "date": "2026-09-15",
+    "timeSlot": "10:00",
+    "status": "agendado",
+    "createdAt": 1789040133620,
+    "sentEmail": true,
+    "adminNotified": true
+  },
+  {
     "id": "lead_1788621592423_iwf5",
     "name": "jose mendez",
     "email": "jhostiel@gmail.com",
